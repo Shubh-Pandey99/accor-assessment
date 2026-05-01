@@ -1,0 +1,31 @@
+output "cluster_name" {
+  value = aws_eks_cluster.main.name
+}
+
+output "cluster_endpoint" {
+  value = aws_eks_cluster.main.endpoint
+}
+
+output "cluster_ca_certificate" {
+  value = aws_eks_cluster.main.certificate_authority[0].data
+}
+
+output "cluster_security_group_id" {
+  value = aws_security_group.cluster.id
+}
+
+output "oidc_issuer" {
+  value = aws_eks_cluster.main.identity[0].oidc[0].issuer
+}
+
+output "oidc_provider_arn" {
+  value = aws_iam_openid_connect_provider.eks.arn
+}
+
+output "karpenter_role_arn" {
+  value = aws_iam_role.karpenter_controller.arn
+}
+
+output "node_role_arn" {
+  value = aws_iam_role.node.arn
+}
