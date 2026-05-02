@@ -1,0 +1,12 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: redemption-pdb
+  namespace: redemption
+  labels:
+    app.kubernetes.io/name: redemption-service
+spec:
+  minAvailable: 4 # keeps service up across 2+ AZs during disruptions
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: redemption-service
