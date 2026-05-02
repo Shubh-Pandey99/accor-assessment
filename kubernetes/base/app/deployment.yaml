@@ -92,8 +92,6 @@ spec:
               value: "info"
             - name: LOG_FORMAT
               value: "json"
-            - name: OTEL_EXPORTER_OTLP_ENDPOINT
-              value: "http://adot-collector.monitoring:4317"
             - name: POD_NAME
               valueFrom:
                 fieldRef:
