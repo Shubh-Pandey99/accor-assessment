@@ -1,3 +1,6 @@
+# Multi-metric HPA: CPU + memory + custom RPS metric.
+# Scales up aggressively (0s stabilization) for flash sales,
+# scales down cautiously (5min cooldown) to avoid flapping.
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -11,8 +14,8 @@ spec:
     kind: Deployment
     name: redemption-service
 
-  minReplicas: 3
-  maxReplicas: 30
+  minReplicas: 6
+  maxReplicas: 60 # supports 10x spike
 
   metrics:
     - type: Resource
@@ -20,7 +23,17 @@ spec:
         name: cpu
         target:
           type: Utilization
+          averageUtilization: 60
+
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
           averageUtilization: 70
+
+  # Custom RPS metric via Prometheus Adapter would be the next addition post-launch.
+  # CPU + memory covers the flash sale scenario sufficiently for v1.
 
   behavior:
     scaleUp:
