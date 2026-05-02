@@ -35,7 +35,7 @@ resource "aws_sns_topic" "warning_alerts" {
 resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
   alarm_name          = "${var.cluster_name}-high-5xx-error-rate"
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 5
+  evaluation_periods  = 3
   threshold           = 1
   alarm_description   = "5xx error rate exceeds 1% for 3 consecutive periods"
 
@@ -81,7 +81,7 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
 resource "aws_cloudwatch_metric_alarm" "high_latency" {
   alarm_name          = "${var.cluster_name}-high-p99-latency"
   comparison_operator = "GreaterThanThreshold"
-  evaluation_periods  = 5
+  evaluation_periods  = 3
   metric_name         = "TargetResponseTime"
   namespace           = "AWS/ApplicationELB"
   period              = 60
