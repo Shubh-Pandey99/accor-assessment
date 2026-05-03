@@ -1,0 +1,61 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-southeast-1
+  EKS_CLUSTER: redemption-prod
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Terraform validate
+        run: |
+          cd terraform
+          terraform init -backend=false
+          terraform validate
+          terraform fmt -check -recursive
+
+      - name: Lint Kubernetes manifests
+        run: kubectl apply --dry-run=client -k kubernetes/overlays/production
+
+  deploy:
+    needs: validate
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build and push image
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+        run: |
+          aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
+          docker build -t $ECR_REGISTRY/redemption-service:${{ github.sha }} .
+          docker push $ECR_REGISTRY/redemption-service:${{ github.sha }}
+
+      - name: Deploy to EKS
+        run: |
+          aws eks update-kubeconfig --name $EKS_CLUSTER --region $AWS_REGION
+          cd kubernetes/overlays/production
+          kustomize edit set image redemption-service=${{ secrets.ECR_REGISTRY }}/redemption-service:${{ github.sha }}
+          kubectl apply -k .
+          kubectl rollout status deployment/redemption-service -n redemption --timeout=300s
