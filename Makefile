@@ -59,9 +59,9 @@ test: validate scan
 	@echo "Infrastructure validation complete"
 
 test-smoke: ## smoke tests against deployed env
-	@echo "Running smoke tests against $(ENV) environment..."
-	@kubectl --context=$(ENV) -n redemption get deployment redemption-service
-	@kubectl --context=$(ENV) -n redemption rollout status deployment/redemption-service --timeout=60s
+	@echo "Running smoke tests against $(ENVIRONMENT) environment..."
+	@kubectl --context=$(ENVIRONMENT) -n redemption get deployment redemption-service
+	@kubectl --context=$(ENVIRONMENT) -n redemption rollout status deployment/redemption-service --timeout=60s
 	@echo "Smoke tests passed"
 
 # docs
