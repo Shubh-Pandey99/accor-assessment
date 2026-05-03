@@ -47,5 +47,7 @@ patches:
         path: /spec/minAvailable
         value: 1
 
-commonLabels:
-  environment: staging
+labels:
+  - pairs:
+      environment: staging
+    includeSelectors: false

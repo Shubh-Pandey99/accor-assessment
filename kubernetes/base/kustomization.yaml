@@ -14,5 +14,7 @@ resources:
   - network-policies/network-policy.yaml
   - monitoring/observability.yaml
 
-commonLabels:
-  app.kubernetes.io/part-of: the-redemption
+labels:
+  - pairs:
+      app.kubernetes.io/part-of: the-redemption
+    includeSelectors: true

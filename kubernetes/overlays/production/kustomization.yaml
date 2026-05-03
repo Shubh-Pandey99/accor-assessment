@@ -23,5 +23,7 @@ patches:
         path: /spec/template/spec/containers/0/resources/limits/memory
         value: "2Gi"
 
-commonLabels:
-  environment: production
+labels:
+  - pairs:
+      environment: production
+    includeSelectors: false
