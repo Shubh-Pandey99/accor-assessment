@@ -14,7 +14,6 @@ baseline_node_min            = 3
 baseline_node_max            = 6
 
 
-enable_container_insights = true
 log_retention_days        = 90
 
 additional_tags = {
