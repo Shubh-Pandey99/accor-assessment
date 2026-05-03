@@ -17,7 +17,6 @@ module "vpc" {
   name_prefix        = local.name_prefix
   vpc_cidr           = var.vpc_cidr
   availability_zones = var.availability_zones
-  environment        = var.environment
   tags               = local.common_tags
 }
 
@@ -28,7 +27,6 @@ module "eks" {
 
   cluster_name    = var.cluster_name
   cluster_version = var.cluster_version
-  environment     = var.environment
 
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
@@ -38,8 +36,6 @@ module "eks" {
   baseline_node_desired        = var.baseline_node_desired
   baseline_node_min            = var.baseline_node_min
   baseline_node_max            = var.baseline_node_max
-
-  enable_container_insights = var.enable_container_insights
 
   tags = local.common_tags
 }
@@ -63,10 +59,7 @@ module "monitoring" {
   source = "./modules/monitoring"
 
   cluster_name       = var.cluster_name
-  environment        = var.environment
-  aws_region         = var.aws_region
   log_retention_days = var.log_retention_days
-  vpc_id             = module.vpc.vpc_id
 
   tags = local.common_tags
 }

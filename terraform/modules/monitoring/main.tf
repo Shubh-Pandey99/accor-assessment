@@ -1,9 +1,6 @@
 # Monitoring module
 #
 # CloudWatch log groups, SNS topics and metric alarms.
-# SNS topics for alerting.
-
-data "aws_caller_identity" "current" {}
 
 # --- CloudWatch log groups ---
 
