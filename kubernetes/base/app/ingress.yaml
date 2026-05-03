@@ -6,7 +6,6 @@ metadata:
   labels:
     app.kubernetes.io/name: redemption-service
   annotations:
-    kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
@@ -29,6 +28,7 @@ metadata:
       deregistration_delay.timeout_seconds=30,
       slow_start.duration_seconds=30
 spec:
+  ingressClassName: alb
   rules:
     - host: redemption.accor.com
       http:
