@@ -2,6 +2,99 @@
 #
 # CloudWatch log groups, SNS topics and metric alarms.
 
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
+
+# --- ALB access logs bucket ---
+# ELB service principal must be able to write; bucket policy is mandatory.
+
+resource "aws_s3_bucket" "alb_logs" {
+  bucket = "${var.cluster_name}-alb-logs"
+
+  tags = merge(var.tags, {
+    Name = "${var.cluster_name}-alb-logs"
+  })
+}
+
+resource "aws_s3_bucket_public_access_block" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  rule {
+    id     = "expire-alb-logs"
+    status = "Enabled"
+
+    filter { prefix = "" }
+
+    expiration {
+      days = var.log_retention_days
+    }
+  }
+}
+
+# ELB service account ID differs by region; the ELB delivery principal uses
+# the regional account ID listed at https://docs.aws.amazon.com/elasticloadbalancing/latest/application/enable-access-logging.html
+# ap-southeast-1 ELB account is 114774131450.
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket = aws_s3_bucket.alb_logs.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ELBLogDelivery"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::114774131450:root"
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+      },
+      {
+        Sid    = "AWSLogDeliveryWrite"
+        Effect = "Allow"
+        Principal = {
+          Service = "delivery.logs.amazonaws.com"
+        }
+        Action    = "s3:PutObject"
+        Resource  = "${aws_s3_bucket.alb_logs.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl" = "bucket-owner-full-control"
+          }
+        }
+      },
+      {
+        Sid    = "AWSLogDeliveryAclCheck"
+        Effect = "Allow"
+        Principal = {
+          Service = "delivery.logs.amazonaws.com"
+        }
+        Action   = "s3:GetBucketAcl"
+        Resource = aws_s3_bucket.alb_logs.arn
+      }
+    ]
+  })
+}
+
 # --- CloudWatch log groups ---
 
 resource "aws_cloudwatch_log_group" "app" {
@@ -51,7 +144,11 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
       period      = 60
       stat        = "Sum"
       dimensions = {
-        LoadBalancer = "${var.cluster_name}-alb"
+        # ARN suffix format: app/<name>/<id>
+        # Get after first deploy: aws elbv2 describe-load-balancers \
+        #   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
+        #   --output text | sed 's|.*loadbalancer/||'
+        LoadBalancer = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
       }
     }
   }
@@ -64,7 +161,11 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
       period      = 60
       stat        = "Sum"
       dimensions = {
-        LoadBalancer = "${var.cluster_name}-alb"
+        # ARN suffix format: app/<name>/<id>
+        # Get after first deploy: aws elbv2 describe-load-balancers \
+        #   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
+        #   --output text | sed 's|.*loadbalancer/||'
+        LoadBalancer = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
       }
     }
   }
@@ -87,7 +188,11 @@ resource "aws_cloudwatch_metric_alarm" "high_latency" {
   alarm_description   = "P99 latency exceeds 500ms for 3 consecutive periods"
 
   dimensions = {
-    LoadBalancer = "${var.cluster_name}-alb"
+    # ARN suffix format: app/<name>/<id>
+    # Get after first deploy: aws elbv2 describe-load-balancers \
+    #   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
+    #   --output text | sed 's|.*loadbalancer/||'
+    LoadBalancer = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
   }
 
   alarm_actions = [aws_sns_topic.critical_alerts.arn]
