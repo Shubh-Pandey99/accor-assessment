@@ -119,10 +119,42 @@ resource "aws_secretsmanager_secret" "app_config" {
   tags        = var.tags
 }
 
+resource "aws_secretsmanager_secret_version" "app_config" {
+  secret_id = aws_secretsmanager_secret.app_config.id
+
+  # Placeholder — replace with real values via CI/CD or manual bootstrap before first deploy.
+  secret_string = jsonencode({
+    ACCOR_API_KEY      = "REPLACE_ME"
+    POINTS_RATE        = "REPLACE_ME"
+    FEATURE_FLAGS      = "REPLACE_ME"
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 resource "aws_secretsmanager_secret" "db_credentials" {
   name        = "redemption/db-credentials"
   description = "Database credentials for The Redemption"
   tags        = var.tags
+}
+
+resource "aws_secretsmanager_secret_version" "db_credentials" {
+  secret_id = aws_secretsmanager_secret.db_credentials.id
+
+  # Placeholder — replace with real values via CI/CD or manual bootstrap before first deploy.
+  secret_string = jsonencode({
+    username = "REPLACE_ME"
+    password = "REPLACE_ME"
+    host     = "REPLACE_ME"
+    port     = "5432"
+    dbname   = "REPLACE_ME"
+  })
+
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
 }
 
 # --- WAF ---
