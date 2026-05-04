@@ -22,23 +22,3 @@ data:
         "force_flush_interval": 5
       }
     }
-
----
-# App configuration mounted into pods via /app/config
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: redemption-config
-  namespace: redemption
-data:
-  app.yaml: |
-    server:
-      port: 8080
-      grpc_port: 9090
-      shutdown_timeout: 60s
-    logging:
-      level: info
-      format: json
-    aws:
-      region: ap-southeast-1
-      secrets_path: redemption/app-config
