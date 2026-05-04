@@ -20,7 +20,7 @@ kubernetes/
 │   ├── hpa/                   # HPA config
 │   ├── pdb/
 │   ├── network-policies/
-│   └── monitoring/            # ADOT collector (CloudWatch)
+│   └── monitoring/            # CloudWatch agent config, app ConfigMap
 └── overlays/
     ├── production/
     └── staging/
@@ -32,7 +32,7 @@ diagrams/                      # Architecture diagram (draw.io)
 
 ## Architecture Diagram
 
-Architecture diagram: `diagrams/architecture.drawio` — open in [diagrams.net](https://diagrams.net). Export as PNG before sharing.
+Architecture diagram: [`diagrams/architecture.svg`](diagrams/architecture.svg) — open directly in the browser or any SVG viewer.
 
 ## Known Gaps
 
