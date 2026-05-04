@@ -142,10 +142,20 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
+# Database subnets get an isolated route table — local VPC traffic only, no NAT egress.
+# This matches the architecture design: DB tier is not internet-routable.
+resource "aws_route_table" "database" {
+  vpc_id = aws_vpc.main.id
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-db-rt"
+  })
+}
+
 resource "aws_route_table_association" "database" {
   count          = length(var.availability_zones)
   subnet_id      = aws_subnet.database[count.index].id
-  route_table_id = aws_route_table.private[count.index].id
+  route_table_id = aws_route_table.database.id
 }
 
 # --- VPC flow logs (security/compliance) ---
