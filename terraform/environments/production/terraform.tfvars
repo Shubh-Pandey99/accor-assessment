@@ -14,7 +14,7 @@ baseline_node_min            = 3
 baseline_node_max            = 6
 
 
-log_retention_days        = 90
+log_retention_days = 90
 
 additional_tags = {
   BusinessUnit = "loyalty-program"
