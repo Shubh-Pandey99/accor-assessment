@@ -24,8 +24,12 @@ spec:
     - Ingress
   ingress:
     - from:
-        - ipBlock:
-            cidr: 10.0.0.0/16
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: aws-load-balancer-controller
       ports:
         - protocol: TCP
           port: 8080
@@ -43,11 +47,14 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # DNS
+    # DNS - target CoreDNS pods specifically, not the whole kube-system namespace
     - to:
         - namespaceSelector:
             matchLabels:
               kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
       ports:
         - protocol: UDP
           port: 53
