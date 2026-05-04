@@ -37,6 +37,8 @@ module "eks" {
   baseline_node_min            = var.baseline_node_min
   baseline_node_max            = var.baseline_node_max
 
+  eks_public_access_cidrs = var.eks_public_access_cidrs
+
   tags = local.common_tags
 }
 

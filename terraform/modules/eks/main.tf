@@ -90,7 +90,7 @@ resource "aws_eks_cluster" "main" {
     endpoint_public_access  = true
     security_group_ids      = [aws_security_group.cluster.id]
 
-    public_access_cidrs = ["0.0.0.0/0"]
+    public_access_cidrs = var.eks_public_access_cidrs
   }
 
   encryption_config {

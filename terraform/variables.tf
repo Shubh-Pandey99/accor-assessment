@@ -66,6 +66,12 @@ variable "baseline_node_max" {
 }
 
 
+variable "eks_public_access_cidrs" {
+  description = "CIDRs permitted to reach the EKS public API endpoint. Replace with corporate/VPN CIDR before go-live. Private-only endpoint is the production end-state."
+  type        = list(string)
+  default     = ["YOUR_VPN_CIDR/32"]
+}
+
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number
