@@ -44,8 +44,10 @@ jobs:
 
       - name: Check for unresolved placeholders
         run: |
+          # ACCOUNT_ID / CERT_ID / WAF_ID are expected in source — substituted by the
+          # deploy job from secrets. Only check for values that should never appear in K8s.
           if kustomize build kubernetes/overlays/production | \
-            grep -Eq 'ACCOUNT_ID|CERT_ID|WAF_ID|REPLACE_AFTER_DEPLOY|YOUR_VPN_CIDR|REDIS_ENDPOINT'; then
+            grep -Eq 'REPLACE_AFTER_DEPLOY|YOUR_VPN_CIDR|REDIS_ENDPOINT'; then
             echo "ERROR: unresolved placeholders found in production overlay"
             exit 1
           fi
@@ -76,6 +78,26 @@ jobs:
         uses: imranismail/setup-kustomize@v2
         with:
           kustomize-version: "5.x"
+
+      - name: Inject account-specific secrets into manifests
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          ACM_CERT_ID: ${{ secrets.ACM_CERT_ID }}
+          WAF_RULE_ID: ${{ secrets.WAF_RULE_ID }}
+        run: |
+          find kubernetes/ -name '*.yaml' -exec sed -i \
+            -e "s/ACCOUNT_ID/${AWS_ACCOUNT_ID}/g" \
+            -e "s/CERT_ID/${ACM_CERT_ID}/g" \
+            -e "s/WAF_ID/${WAF_RULE_ID}/g" \
+            {} +
+
+      - name: Verify no placeholders remain post-substitution
+        run: |
+          if kustomize build kubernetes/overlays/production | \
+            grep -Eq 'ACCOUNT_ID|CERT_ID|WAF_ID|REPLACE_AFTER_DEPLOY|YOUR_VPN_CIDR|REDIS_ENDPOINT'; then
+            echo "ERROR: unresolved placeholders after secret injection"
+            exit 1
+          fi
 
       - name: Deploy to EKS
         run: |
