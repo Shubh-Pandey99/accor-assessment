@@ -43,7 +43,7 @@ Things that aren't done or aren't in scope for this assessment:
 - ElastiCache endpoint injection into K8s ConfigMap is not implemented (needs External Secrets Operator or init container pattern).
 - Canary deploy is a rolling update with `maxUnavailable: 0` — request-level traffic splitting (Argo Rollouts) is deferred post-launch.
 - Custom HPA metrics (RPS via Prometheus Adapter) are deferred — CPU + memory HPA is sufficient until real traffic data is available.
-- EKS API server is publicly accessible with `0.0.0.0/0` — needs to be locked to corporate CIDR before production.
+- EKS public endpoint restricted to configured CIDRs — set `eks_public_access_cidrs` to your VPN/office CIDR in `environments/production/terraform.tfvars` before applying. Private-only endpoint is the production end-state.
 
 See [docs/design-document.md](docs/design-document.md) for full context on these.
 
