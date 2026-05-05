@@ -44,9 +44,11 @@ jobs:
 
       - name: Check for unresolved placeholders
         run: |
-          kustomize build kubernetes/overlays/production \
-            | grep -E 'ACCOUNT_ID|CERT_ID|WAF_ID' \
-            && echo "ERROR: unresolved placeholders found in built manifests" && exit 1 || true
+          if kustomize build kubernetes/overlays/production | \
+            grep -Eq 'ACCOUNT_ID|CERT_ID|WAF_ID|REPLACE_AFTER_DEPLOY|YOUR_VPN_CIDR|REDIS_ENDPOINT'; then
+            echo "ERROR: unresolved placeholders found in production overlay"
+            exit 1
+          fi
 
   deploy:
     needs: validate
