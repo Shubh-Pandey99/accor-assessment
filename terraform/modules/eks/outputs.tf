@@ -21,3 +21,15 @@ output "oidc_provider_arn" {
 output "karpenter_role_arn" {
   value = aws_iam_role.karpenter_controller.arn
 }
+
+output "karpenter_irsa_arn" {
+  value = aws_iam_role.karpenter_controller.arn
+}
+
+output "karpenter_interruption_queue_name" {
+  value = aws_sqs_queue.karpenter_interruption.name
+}
+
+output "node_instance_profile_name" {
+  value = aws_iam_instance_profile.node.name
+}

@@ -59,7 +59,8 @@ resource "aws_security_group" "cluster" {
   vpc_id      = var.vpc_id
 
   tags = merge(var.tags, {
-    Name = "${var.cluster_name}-cluster-sg"
+    Name                     = "${var.cluster_name}-cluster-sg"
+    "karpenter.sh/discovery" = var.cluster_name
   })
 
   lifecycle {
@@ -271,6 +272,46 @@ resource "aws_iam_role_policy" "karpenter_controller" {
         }
         Resource = "*"
       },
+      {
+        Sid    = "InterruptionQueue"
+        Effect = "Allow"
+        Action = [
+          "sqs:DeleteMessage",
+          "sqs:GetQueueUrl",
+          "sqs:ReceiveMessage",
+        ]
+        Resource = aws_sqs_queue.karpenter_interruption.arn
+      },
+    ]
+  })
+}
+
+# Instance profile referenced by Karpenter EC2NodeClass
+resource "aws_iam_instance_profile" "node" {
+  name = "${var.cluster_name}-node-profile"
+  role = aws_iam_role.node.name
+  tags = var.tags
+}
+
+# SQS queue for spot interruption and rebalance notifications
+resource "aws_sqs_queue" "karpenter_interruption" {
+  name                      = "${var.cluster_name}-karpenter-interruption"
+  message_retention_seconds = 300
+  tags                      = var.tags
+}
+
+resource "aws_sqs_queue_policy" "karpenter_interruption" {
+  queue_url = aws_sqs_queue.karpenter_interruption.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect    = "Allow"
+        Principal = { Service = ["events.amazonaws.com", "sqs.amazonaws.com"] }
+        Action    = "sqs:SendMessage"
+        Resource  = aws_sqs_queue.karpenter_interruption.arn
+      }
     ]
   })
 }
