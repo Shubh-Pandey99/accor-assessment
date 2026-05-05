@@ -12,7 +12,7 @@ resources:
   - hpa/hpa.yaml
   - pdb/pdb.yaml
   - network-policies/network-policy.yaml
-  - monitoring/observability.yaml
+  - monitoring/fluent-bit.yaml
 
 labels:
   - pairs:

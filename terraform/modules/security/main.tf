@@ -124,9 +124,9 @@ resource "aws_secretsmanager_secret_version" "app_config" {
 
   # Placeholder — replace with real values via CI/CD or manual bootstrap before first deploy.
   secret_string = jsonencode({
-    ACCOR_API_KEY      = "REPLACE_ME"
-    POINTS_RATE        = "REPLACE_ME"
-    FEATURE_FLAGS      = "REPLACE_ME"
+    ACCOR_API_KEY = "REPLACE_ME"
+    POINTS_RATE   = "REPLACE_ME"
+    FEATURE_FLAGS = "REPLACE_ME"
   })
 
   lifecycle {
