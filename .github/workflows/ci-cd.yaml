@@ -42,6 +42,12 @@ jobs:
           kustomize build kubernetes/overlays/production > /dev/null
           kustomize build kubernetes/overlays/staging   > /dev/null
 
+      - name: Check for unresolved placeholders
+        run: |
+          kustomize build kubernetes/overlays/production \
+            | grep -E 'ACCOUNT_ID|CERT_ID|WAF_ID' \
+            && echo "ERROR: unresolved placeholders found in built manifests" && exit 1 || true
+
   deploy:
     needs: validate
     runs-on: ubuntu-latest
