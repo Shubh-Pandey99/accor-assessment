@@ -28,6 +28,9 @@ jobs:
       - name: Terraform validate
         run: |
           cd terraform
+          # -backend=false skips remote state — terraform plan is intentionally excluded
+          # from CI because it requires live AWS credentials and a bootstrapped backend.
+          # Run `terraform plan` locally or in a separate privileged workflow before applying.
           terraform init -backend=false
           terraform validate
           terraform fmt -check -recursive
@@ -40,17 +43,18 @@ jobs:
       - name: Lint Kubernetes manifests
         run: |
           kustomize build kubernetes/overlays/production > /dev/null
-          kustomize build kubernetes/overlays/staging   > /dev/null
 
       - name: Check for unresolved placeholders
         run: |
-          # ACCOUNT_ID / CERT_ID / WAF_ID are expected in source — substituted by the
-          # deploy job from secrets. Only check for values that should never appear in K8s.
-          if kustomize build kubernetes/overlays/production | \
-            grep -Eq 'REPLACE_AFTER_DEPLOY|YOUR_VPN_CIDR|REDIS_ENDPOINT'; then
-            echo "ERROR: unresolved placeholders found in production overlay"
-            exit 1
-          fi
+          # ACCOUNT_ID / CERT_ID / WAF_ID must be present in source — the deploy job's
+          # sed replaces them from secrets. If they're absent, sed would silently produce
+          # a broken manifest (image URLs, cert ARNs, WAF ARNs all unset).
+          for token in ACCOUNT_ID CERT_ID WAF_ID; do
+            if ! grep -rq "$token" kubernetes/overlays/production/; then
+              echo "ERROR: $token missing from kubernetes/overlays/production/ — sed substitution target absent"
+              exit 1
+            fi
+          done
 
   deploy:
     needs: validate

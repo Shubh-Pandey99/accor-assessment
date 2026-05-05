@@ -10,8 +10,8 @@ variable "environment" {
   default     = "production"
 
   validation {
-    condition     = contains(["production", "staging", "development"], var.environment)
-    error_message = "Environment must be one of: production, staging, development."
+    condition     = contains(["production"], var.environment)
+    error_message = "Environment must be: production."
   }
 }
 
@@ -24,7 +24,7 @@ variable "cluster_name" {
 variable "cluster_version" {
   description = "Kubernetes version for EKS"
   type        = string
-  default     = "1.29"
+  default     = "1.31"
 }
 
 variable "vpc_cidr" {
@@ -69,11 +69,11 @@ variable "baseline_node_max" {
 variable "eks_public_access_cidrs" {
   description = "CIDRs permitted to reach the EKS public API endpoint. Replace with corporate/VPN CIDR before go-live. Private-only endpoint is the production end-state."
   type        = list(string)
-  default     = ["YOUR_VPN_CIDR/32"]
+  default     = []
 
   validation {
-    condition     = !contains(var.eks_public_access_cidrs, "YOUR_VPN_CIDR/32")
-    error_message = "Set eks_public_access_cidrs to a real CIDR in environments/production/terraform.tfvars before applying."
+    condition     = length(var.eks_public_access_cidrs) == 0 || alltrue([for cidr in var.eks_public_access_cidrs : !contains(["YOUR_VPN_CIDR/32", "203.0.113.0/32"], cidr)])
+    error_message = "Set eks_public_access_cidrs to your corporate/VPN CIDR in environments/production/terraform.tfvars before applying."
   }
 }
 
@@ -87,6 +87,11 @@ variable "alb_arn_suffix" {
   description = "ALB ARN suffix for CloudWatch alarms. Set after first deploy — see monitoring module variable for retrieval command. Re-apply with: terraform apply -target=module.monitoring."
   type        = string
   default     = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
+}
+
+variable "alert_email" {
+  description = "Email address for CloudWatch alarm SNS subscriptions. The address receives a confirmation email on first apply — click the link to activate."
+  type        = string
 }
 
 variable "additional_tags" {

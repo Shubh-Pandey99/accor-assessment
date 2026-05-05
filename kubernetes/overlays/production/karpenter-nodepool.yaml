@@ -40,12 +40,12 @@ spec:
       expireAfter: 720h # rotate every 30d for patching
 
   limits:
-    cpu: "200"
-    memory: "400Gi"
+    cpu: "80"     # 1000m/pod × 60 max pods = 60 CPUs; headroom for scheduling overhead
+    memory: "160Gi"  # 1Gi/pod × 60 max pods = 60Gi; headroom for system overhead
 
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 30s
+    consolidateAfter: 10m  # 10m > HPA scale-down stabilization (300s) to avoid disrupting draining pods
 
   weight: 10
 
@@ -55,7 +55,7 @@ kind: EC2NodeClass
 metadata:
   name: default
 spec:
-  amiFamily: AL2
+  amiFamily: AL2023
 
   subnetSelectorTerms:
     - tags:

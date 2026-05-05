@@ -15,12 +15,13 @@ module "vpc" {
   source = "./modules/vpc"
 
   name_prefix        = local.name_prefix
+  cluster_name       = var.cluster_name
   vpc_cidr           = var.vpc_cidr
   availability_zones = var.availability_zones
   tags               = local.common_tags
 }
 
-# --- EKS Cluster + Node Groups ---
+# --- EKS Cluster + Node Groups + Monitoring ---
 
 module "eks" {
   source = "./modules/eks"
@@ -39,6 +40,10 @@ module "eks" {
 
   eks_public_access_cidrs = var.eks_public_access_cidrs
 
+  log_retention_days = var.log_retention_days
+  alb_arn_suffix     = var.alb_arn_suffix
+  alert_email        = var.alert_email
+
   tags = local.common_tags
 }
 
@@ -51,18 +56,6 @@ module "security" {
   environment           = var.environment
   eks_oidc_issuer       = module.eks.oidc_issuer
   eks_oidc_provider_arn = module.eks.oidc_provider_arn
-
-  tags = local.common_tags
-}
-
-# --- Monitoring & Observability ---
-
-module "monitoring" {
-  source = "./modules/monitoring"
-
-  cluster_name       = var.cluster_name
-  log_retention_days = var.log_retention_days
-  alb_arn_suffix     = var.alb_arn_suffix
 
   tags = local.common_tags
 }

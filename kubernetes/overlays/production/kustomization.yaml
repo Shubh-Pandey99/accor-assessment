@@ -4,6 +4,13 @@ kind: Kustomization
 
 resources:
   - ../../base
+  - ../../base/logging
+  - karpenter-nodepool.yaml
+
+images:
+  - name: redemption-service
+    newName: ACCOUNT_ID.dkr.ecr.ap-southeast-1.amazonaws.com/redemption-service
+    newTag: "1.0.0"
 
 patches:
   - target:

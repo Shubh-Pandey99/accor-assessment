@@ -1,12 +1,6 @@
-# Monitoring module
-#
-# CloudWatch log groups, SNS topics and metric alarms.
-
-data "aws_caller_identity" "current" {}
-data "aws_region" "current" {}
-
-# --- ALB access logs bucket ---
-# ELB service principal must be able to write; bucket policy is mandatory.
+# Monitoring resources — CloudWatch log groups, SNS topics, alarms, ALB logs bucket.
+# Kept in the EKS module for assessment simplicity; extract to a shared module
+# when this pattern is reused across services.
 
 resource "aws_s3_bucket" "alb_logs" {
   bucket = "${var.cluster_name}-alb-logs"
@@ -50,9 +44,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "alb_logs" {
   }
 }
 
-# ELB service account ID differs by region; the ELB delivery principal uses
-# the regional account ID listed at https://docs.aws.amazon.com/elasticloadbalancing/latest/application/enable-access-logging.html
-# ap-southeast-1 ELB account is 114774131450.
+# ELB delivery principal for ap-southeast-1: https://docs.aws.amazon.com/elasticloadbalancing/latest/application/enable-access-logging.html
 resource "aws_s3_bucket_policy" "alb_logs" {
   bucket = aws_s3_bucket.alb_logs.id
 
@@ -95,8 +87,6 @@ resource "aws_s3_bucket_policy" "alb_logs" {
   })
 }
 
-# --- CloudWatch log groups ---
-
 resource "aws_cloudwatch_log_group" "app" {
   name              = "/eks/${var.cluster_name}/app/redemption"
   retention_in_days = var.log_retention_days
@@ -109,11 +99,15 @@ resource "aws_cloudwatch_log_group" "eks_cluster" {
   tags              = var.tags
 }
 
-# --- Alerting ---
-
 resource "aws_sns_topic" "critical_alerts" {
   name = "${var.cluster_name}-critical-alerts"
   tags = merge(var.tags, { Severity = "critical" })
+}
+
+resource "aws_sns_topic_subscription" "critical_email" {
+  topic_arn = aws_sns_topic.critical_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
 }
 
 resource "aws_sns_topic" "warning_alerts" {
@@ -121,8 +115,16 @@ resource "aws_sns_topic" "warning_alerts" {
   tags = merge(var.tags, { Severity = "warning" })
 }
 
+resource "aws_sns_topic_subscription" "warning_email" {
+  topic_arn = aws_sns_topic.warning_alerts.arn
+  protocol  = "email"
+  endpoint  = var.alert_email
+}
+
 # 5xx error rate > 1% for 3 consecutive minutes -> page
 resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
+  count = can(regex("REPLACE_AFTER_DEPLOY", var.alb_arn_suffix)) ? 0 : 1
+
   alarm_name          = "${var.cluster_name}-high-5xx-error-rate"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3
@@ -169,6 +171,8 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
 
 # p99 latency > 500ms for 3 minutes -> page
 resource "aws_cloudwatch_metric_alarm" "high_latency" {
+  count = can(regex("REPLACE_AFTER_DEPLOY", var.alb_arn_suffix)) ? 0 : 1
+
   alarm_name          = "${var.cluster_name}-high-p99-latency"
   comparison_operator = "GreaterThanThreshold"
   evaluation_periods  = 3

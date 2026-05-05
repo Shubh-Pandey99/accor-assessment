@@ -3,6 +3,11 @@ variable "name_prefix" {
   type        = string
 }
 
+variable "cluster_name" {
+  description = "EKS cluster name — used for karpenter.sh/discovery tag on private subnets"
+  type        = string
+}
+
 variable "vpc_cidr" {
   description = "CIDR block for the VPC"
   type        = string

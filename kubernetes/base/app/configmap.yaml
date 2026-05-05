@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redemption-config
+  namespace: redemption
+data:
+  config.yaml: |
+    server:
+      port: 8080
+      grpcPort: 9090
+      readTimeout: 30s
+      writeTimeout: 30s
+      shutdownTimeout: 30s
+
+    database:
+      type: dynamodb
+      tableName: redemption-transactions
+      region: ap-southeast-1
+
+    queue:
+      type: sqs
+      url: https://sqs.ap-southeast-1.amazonaws.com/ACCOUNT_ID/redemption-events
+      maxMessages: 10
+      visibilityTimeout: 60
+
+    cache:
+      type: elasticache
+      # Redis endpoint injected when ElastiCache is provisioned (External Secrets or overlay patch)
+      ttl: 300
+
+    rateLimit:
+      enabled: true
+      requestsPerSecond: 1000
+      burst: 5000
+
+    circuitBreaker:
+      enabled: true
+      threshold: 5
+      timeout: 30s
+      maxRequests: 100

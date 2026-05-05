@@ -52,6 +52,7 @@ resource "aws_subnet" "private" {
     Name                                       = "${var.name_prefix}-private-${var.availability_zones[count.index]}"
     "kubernetes.io/role/internal-elb"          = "1"
     "kubernetes.io/cluster/${var.name_prefix}" = "shared"
+    "karpenter.sh/discovery"                   = var.cluster_name
   })
 }
 
@@ -285,5 +286,18 @@ resource "aws_vpc_endpoint" "sts" {
 
   tags = merge(var.tags, {
     Name = "${var.name_prefix}-sts-endpoint"
+  })
+}
+
+resource "aws_vpc_endpoint" "dynamodb" {
+  # DynamoDB supports Gateway endpoints (free). Interface endpoints for DynamoDB
+  # cost ~$21/month across 3 AZs and provide no benefit over the Gateway type.
+  vpc_id            = aws_vpc.main.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.dynamodb"
+  vpc_endpoint_type = "Gateway"
+  route_table_ids   = aws_route_table.private[*].id
+
+  tags = merge(var.tags, {
+    Name = "${var.name_prefix}-dynamodb"
   })
 }

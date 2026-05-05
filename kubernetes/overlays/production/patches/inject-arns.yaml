@@ -10,6 +10,14 @@ metadata:
     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/redemption-prod-redemption-svc
 ---
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: fluent-bit
+  namespace: logging
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/redemption-prod-fluent-bit
+---
+apiVersion: v1
 kind: ConfigMap
 metadata:
   name: redemption-config
