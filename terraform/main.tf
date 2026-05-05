@@ -62,6 +62,7 @@ module "monitoring" {
 
   cluster_name       = var.cluster_name
   log_retention_days = var.log_retention_days
+  alb_arn_suffix     = var.alb_arn_suffix
 
   tags = local.common_tags
 }

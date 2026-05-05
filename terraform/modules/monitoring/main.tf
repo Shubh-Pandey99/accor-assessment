@@ -144,11 +144,7 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
       period      = 60
       stat        = "Sum"
       dimensions = {
-        # ARN suffix format: app/<name>/<id>
-        # Get after first deploy: aws elbv2 describe-load-balancers \
-        #   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
-        #   --output text | sed 's|.*loadbalancer/||'
-        LoadBalancer = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
+        LoadBalancer = var.alb_arn_suffix
       }
     }
   }
@@ -161,11 +157,7 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
       period      = 60
       stat        = "Sum"
       dimensions = {
-        # ARN suffix format: app/<name>/<id>
-        # Get after first deploy: aws elbv2 describe-load-balancers \
-        #   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
-        #   --output text | sed 's|.*loadbalancer/||'
-        LoadBalancer = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
+        LoadBalancer = var.alb_arn_suffix
       }
     }
   }
@@ -188,11 +180,7 @@ resource "aws_cloudwatch_metric_alarm" "high_latency" {
   alarm_description   = "P99 latency exceeds 500ms for 3 consecutive periods"
 
   dimensions = {
-    # ARN suffix format: app/<name>/<id>
-    # Get after first deploy: aws elbv2 describe-load-balancers \
-    #   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
-    #   --output text | sed 's|.*loadbalancer/||'
-    LoadBalancer = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
+    LoadBalancer = var.alb_arn_suffix
   }
 
   alarm_actions = [aws_sns_topic.critical_alerts.arn]

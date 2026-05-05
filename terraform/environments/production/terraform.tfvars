@@ -13,8 +13,18 @@ baseline_node_desired        = 3
 baseline_node_min            = 3
 baseline_node_max            = 6
 
+# Replace with your actual VPN/office CIDR before applying
+eks_public_access_cidrs = ["203.0.113.0/32"]
+
 
 log_retention_days = 90
+
+# Set after first deploy. Retrieve with:
+# aws elbv2 describe-load-balancers \
+#   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
+#   --output text | sed 's|.*loadbalancer/||'
+# Then re-apply: terraform apply -target=module.monitoring
+alb_arn_suffix = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
 
 additional_tags = {
   BusinessUnit = "loyalty-program"

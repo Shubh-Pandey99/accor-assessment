@@ -70,12 +70,23 @@ variable "eks_public_access_cidrs" {
   description = "CIDRs permitted to reach the EKS public API endpoint. Replace with corporate/VPN CIDR before go-live. Private-only endpoint is the production end-state."
   type        = list(string)
   default     = ["YOUR_VPN_CIDR/32"]
+
+  validation {
+    condition     = !contains(var.eks_public_access_cidrs, "YOUR_VPN_CIDR/32")
+    error_message = "Set eks_public_access_cidrs to a real CIDR in environments/production/terraform.tfvars before applying."
+  }
 }
 
 variable "log_retention_days" {
   description = "CloudWatch log retention in days"
   type        = number
   default     = 90
+}
+
+variable "alb_arn_suffix" {
+  description = "ALB ARN suffix for CloudWatch alarms. Set after first deploy — see monitoring module variable for retrieval command. Re-apply with: terraform apply -target=module.monitoring."
+  type        = string
+  default     = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
 }
 
 variable "additional_tags" {
