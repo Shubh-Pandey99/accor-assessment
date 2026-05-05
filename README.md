@@ -20,14 +20,14 @@ kubernetes/
 │   ├── hpa/                   # HPA config
 │   ├── pdb/
 │   ├── network-policies/
-│   └── monitoring/            # CloudWatch agent config, app ConfigMap
+│   └── monitoring/            # Fluent Bit DaemonSet (ships logs to CloudWatch)
 └── overlays/
     ├── production/
     └── staging/
 
 .github/workflows/             # CI/CD
 docs/                          # Design document
-diagrams/                      # Architecture diagram (draw.io)
+diagrams/                      # Architecture diagram (SVG)
 ```
 
 ## Architecture Diagram
@@ -39,6 +39,7 @@ Architecture diagram: [`diagrams/architecture.svg`](diagrams/architecture.svg) �
 Things that aren't done or aren't in scope for this assessment:
 
 - Application code is not included — infra only.
+- Redis/ElastiCache is intentionally not provisioned in this assessment. The NetworkPolicy Redis egress rule and DB-tier subnet scaffolding are forward-compatibility placeholders for a future caching layer — not a broken implementation.
 - ElastiCache endpoint injection into K8s ConfigMap is not implemented (needs External Secrets Operator or init container pattern).
 - Canary deploy is a rolling update with `maxUnavailable: 0` — request-level traffic splitting (Argo Rollouts) is deferred post-launch.
 - Custom HPA metrics (RPS via Prometheus Adapter) are deferred — CPU + memory HPA is sufficient until real traffic data is available.

@@ -1,4 +1,4 @@
-# Multi-metric HPA: CPU + memory + custom RPS metric.
+# HPA: CPU + memory. Custom RPS metric deferred post-launch (Prometheus Adapter).
 # Scales up aggressively (0s stabilization) for flash sales,
 # scales down cautiously (5min cooldown) to avoid flapping.
 apiVersion: autoscaling/v2
@@ -32,8 +32,7 @@ spec:
           type: Utilization
           averageUtilization: 70
 
-  # Custom RPS metric via Prometheus Adapter would be the next addition post-launch.
-  # CPU + memory covers the flash sale scenario sufficiently for v1.
+  # TODO: add RPS metric via Prometheus Adapter post-launch.
 
   behavior:
     scaleUp:
