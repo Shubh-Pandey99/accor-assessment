@@ -3,4 +3,4 @@ kind: Kustomization
 
 resources:
   - namespace.yaml
-  - ../monitoring/fluent-bit.yaml
+  - fluent-bit.yaml

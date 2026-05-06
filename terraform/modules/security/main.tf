@@ -186,7 +186,7 @@ resource "aws_wafv2_web_acl" "main" {
     visibility_config {
       sampled_requests_enabled   = true
       cloudwatch_metrics_enabled = true
-      metric_name                = "AWSManagedCommon"
+      metric_name                = "CommonRuleSet"
     }
   }
 
@@ -208,7 +208,7 @@ resource "aws_wafv2_web_acl" "main" {
     visibility_config {
       sampled_requests_enabled   = true
       cloudwatch_metrics_enabled = true
-      metric_name                = "AWSManagedBadInputs"
+      metric_name                = "KnownBadInputs"
     }
   }
 
