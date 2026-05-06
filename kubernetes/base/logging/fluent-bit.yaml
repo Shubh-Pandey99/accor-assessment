@@ -1,10 +1,5 @@
 ---
-# Fluent Bit ServiceAccount — bound to the IRSA role provisioned in
-# terraform/modules/security for CloudWatch log delivery.
-# The role ARN annotation is injected by the production overlay patch.
-#
-# Log shipping deployment: a single Helm chart post-bootstrap.
-# Not included in assessment scope — IAM role and log group are provisioned by Terraform.
+# Fluent Bit ServiceAccount — bounds to IRSA role for CloudWatch log delivery
 apiVersion: v1
 kind: ServiceAccount
 metadata:

@@ -29,11 +29,9 @@ Thumbs.db
 *.key
 secrets.yaml
 *.env
-Makefile
+
 split-secrets.yaml
 
 # docs build artifacts
 docs/*.html
 
-# scripts not for version control
-redate*.sh

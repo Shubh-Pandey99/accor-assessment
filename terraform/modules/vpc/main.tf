@@ -154,63 +154,6 @@ resource "aws_route_table_association" "database" {
   route_table_id = aws_route_table.database.id
 }
 
-# --- VPC flow logs ---
-
-resource "aws_flow_log" "main" {
-  vpc_id                   = aws_vpc.main.id
-  traffic_type             = "ALL"
-  log_destination          = aws_s3_bucket.flow_logs.arn
-  log_destination_type     = "s3"
-  max_aggregation_interval = 60
-
-  tags = merge(var.tags, {
-    Name = "${var.name_prefix}-flow-logs"
-  })
-}
-
-resource "aws_s3_bucket" "flow_logs" {
-  bucket = "${var.name_prefix}-vpc-flow-logs-${data.aws_region.current.name}"
-
-  tags = merge(var.tags, {
-    Name = "${var.name_prefix}-flow-logs"
-  })
-}
-
-resource "aws_s3_bucket_lifecycle_configuration" "flow_logs" {
-  bucket = aws_s3_bucket.flow_logs.id
-
-  rule {
-    id     = "expire-old-logs"
-    status = "Enabled"
-
-    filter {
-      prefix = ""
-    }
-
-    expiration {
-      days = 90
-    }
-  }
-}
-
-resource "aws_s3_bucket_server_side_encryption_configuration" "flow_logs" {
-  bucket = aws_s3_bucket.flow_logs.id
-
-  rule {
-    apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
-    }
-  }
-}
-
-resource "aws_s3_bucket_public_access_block" "flow_logs" {
-  bucket = aws_s3_bucket.flow_logs.id
-
-  block_public_acls       = true
-  block_public_policy     = true
-  ignore_public_acls      = true
-  restrict_public_buckets = true
-}
 
 # --- VPC endpoints ---
 

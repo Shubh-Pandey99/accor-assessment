@@ -30,7 +30,7 @@ patches:
         path: /spec/template/spec/containers/0/resources/limits/memory
         value: "2Gi"
 
-  # Fill in real AWS account/cert/WAF IDs before deploying.
+  # Inject ARNs
   - path: patches/inject-arns.yaml
 
 labels:

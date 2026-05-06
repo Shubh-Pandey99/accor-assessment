@@ -1,5 +1,4 @@
-# Fill in real values before first deploy. Never commit with actual IDs — use
-# secrets manager or CI secrets to inject them at deploy time.
+# Values injected by CI/CD via sed
 ---
 apiVersion: v1
 kind: ServiceAccount

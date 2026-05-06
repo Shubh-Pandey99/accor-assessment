@@ -16,13 +16,13 @@ init: ## init terraform
 	cd $(TF_DIR) && terraform init
 
 plan: ## plan changes
-	cd $(TF_DIR) && terraform plan -var-file=environments/$(ENVIRONMENT)/terraform.tfvars -out=tfplan
+	cd $(TF_DIR) && terraform plan -out=tfplan
 
 apply: ## apply changes
 	cd $(TF_DIR) && terraform apply tfplan
 
 destroy: ## destroy everything (asks for confirmation)
-	cd $(TF_DIR) && terraform destroy -var-file=environments/$(ENVIRONMENT)/terraform.tfvars
+	cd $(TF_DIR) && terraform destroy
 
 validate: ## validate terraform + fmt check
 	cd $(TF_DIR) && terraform fmt -check -recursive && terraform validate
@@ -39,9 +39,7 @@ deploy: ## deploy to production
 	kustomize build $(K8S_DIR)/overlays/production | kubectl apply -f -
 	kubectl rollout status deployment/redemption-service -n redemption --timeout=300s
 
-deploy-staging: ## deploy to staging
-	kustomize build $(K8S_DIR)/overlays/staging | kubectl apply -f -
-	kubectl rollout status deployment/redemption-service -n redemption --timeout=300s
+
 
 rollback: ## rollback last deployment
 	kubectl rollout undo deployment/redemption-service -n redemption
@@ -64,12 +62,6 @@ test-smoke: ## smoke tests against deployed env
 	@kubectl --context=$(ENVIRONMENT) -n redemption rollout status deployment/redemption-service --timeout=60s
 	@echo "Smoke tests passed"
 
-# docs
-docs-pdf: ## generate design doc PDF (needs pandoc)
-	@which pandoc > /dev/null 2>&1 || (echo "pandoc not found: brew install pandoc"; exit 1)
-	pandoc docs/design-document.md -o docs/design-document.pdf --pdf-engine=xelatex 2>/dev/null || \
-		pandoc docs/design-document.md -o docs/design-document.pdf
-	@echo "Generated docs/design-document.pdf"
 
 clean: ## clean build artifacts
 	rm -f $(TF_DIR)/tfplan docs/design-document.pdf

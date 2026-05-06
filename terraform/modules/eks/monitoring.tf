@@ -1,6 +1,4 @@
-# Monitoring resources — CloudWatch log groups, SNS topics, alarms, ALB logs bucket.
-# Kept in the EKS module for assessment simplicity; extract to a shared module
-# when this pattern is reused across services.
+# Monitoring
 
 resource "aws_s3_bucket" "alb_logs" {
   bucket = "${var.cluster_name}-alb-logs"
@@ -53,7 +51,7 @@ resource "aws_sns_topic_subscription" "warning_email" {
   endpoint  = var.alert_email
 }
 
-# 5xx error rate > 1% for 3 consecutive minutes -> page
+# High 5xx error rate alarm
 resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
   count = can(regex("REPLACE_AFTER_DEPLOY", var.alb_arn_suffix)) ? 0 : 1
 
@@ -101,7 +99,7 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
   tags          = var.tags
 }
 
-# p99 latency > 500ms for 3 minutes -> page
+# High p99 latency alarm
 resource "aws_cloudwatch_metric_alarm" "high_latency" {
   count = can(regex("REPLACE_AFTER_DEPLOY", var.alb_arn_suffix)) ? 0 : 1
 
@@ -124,6 +122,4 @@ resource "aws_cloudwatch_metric_alarm" "high_latency" {
   tags          = var.tags
 }
 
-# For production: replace CloudWatch alarms with Amazon Managed Prometheus + Grafana.
-# AMP gives richer dashboards and longer retention. CloudWatch is sufficient for launch
-# and keeps operational complexity low while the team onboards to EKS.
+

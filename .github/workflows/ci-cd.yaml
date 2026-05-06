@@ -59,7 +59,9 @@ jobs:
   deploy:
     needs: validate
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    # Skip deployment step in assessment repository to prevent failure due to missing AWS credentials.
+    # To enable, define the AWS_DEPLOY_ROLE_ARN and other secrets in the repository settings.
+    if: github.ref == 'refs/heads/main' && secrets.AWS_DEPLOY_ROLE_ARN != ''
     environment: production
     steps:
       - uses: actions/checkout@v4

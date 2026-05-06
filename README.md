@@ -93,7 +93,7 @@ kustomize build kubernetes/overlays/production | kubectl apply -f -
 - **HPA + Karpenter** — pod-level and node-level autoscaling
 - **Private subnets + VPC endpoints** — workloads never exposed to public internet
 - **IRSA** — pod-level IAM, no long-lived credentials
-- **CI/CD**: GitHub Actions validates Terraform and K8s manifests on PR, deploys to EKS on merge to main. See `.github/workflows/ci-cd.yaml`.
+- **CI/CD**: GitHub Actions validates Terraform and K8s manifests on PR. The live deployment job on merge to `main` is conditionally skipped by default to prevent CI failure since AWS credentials (OIDC) and ECR secrets are not populated in this assessment repository.
 
 ## SLOs
 

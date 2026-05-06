@@ -1,6 +1,4 @@
-# Karpenter for pod-driven burst scaling. When HPA creates pending pods,
-# Karpenter spins up right-sized nodes in ~60s. Prefers spot for cost
-# but falls back to on-demand.
+# Karpenter spot nodepool for burst scaling
 apiVersion: karpenter.sh/v1
 kind: NodePool
 metadata:
