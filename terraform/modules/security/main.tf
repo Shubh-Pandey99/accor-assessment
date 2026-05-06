@@ -49,19 +49,6 @@ resource "aws_iam_role_policy" "redemption_dynamodb" {
         Resource = [
           "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/redemption-*",
         ]
-      },
-      {
-        Sid    = "DynamoDBStreamAccess"
-        Effect = "Allow"
-        Action = [
-          "dynamodb:DescribeStream",
-          "dynamodb:GetRecords",
-          "dynamodb:GetShardIterator",
-          "dynamodb:ListStreams",
-        ]
-        Resource = [
-          "arn:aws:dynamodb:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:table/redemption-*/stream/*",
-        ]
       }
     ]
   })

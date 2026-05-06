@@ -1,5 +1,7 @@
 # Monitoring
 
+data "aws_caller_identity" "current" {}
+
 resource "aws_s3_bucket" "alb_logs" {
   bucket = "${var.cluster_name}-alb-logs"
 
@@ -15,6 +17,32 @@ resource "aws_s3_bucket_public_access_block" "alb_logs" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+resource "aws_s3_bucket_policy" "alb_logs" {
+  bucket     = aws_s3_bucket.alb_logs.id
+  depends_on = [aws_s3_bucket_public_access_block.alb_logs]
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ALBLogDelivery"
+        Effect = "Allow"
+        Principal = {
+          Service = "delivery.logs.amazonaws.com"
+        }
+        Action   = "s3:PutObject"
+        Resource = "${aws_s3_bucket.alb_logs.arn}/AWSLogs/${data.aws_caller_identity.current.account_id}/*"
+        Condition = {
+          StringEquals = {
+            "s3:x-amz-acl"    = "bucket-owner-full-control"
+            "aws:SourceAccount" = data.aws_caller_identity.current.account_id
+          }
+        }
+      }
+    ]
+  })
 }
 
 resource "aws_cloudwatch_log_group" "app" {
@@ -43,12 +71,6 @@ resource "aws_sns_topic_subscription" "critical_email" {
 resource "aws_sns_topic" "warning_alerts" {
   name = "${var.cluster_name}-warning-alerts"
   tags = merge(var.tags, { Severity = "warning" })
-}
-
-resource "aws_sns_topic_subscription" "warning_email" {
-  topic_arn = aws_sns_topic.warning_alerts.arn
-  protocol  = "email"
-  endpoint  = var.alert_email
 }
 
 data "aws_lb" "redemption" {

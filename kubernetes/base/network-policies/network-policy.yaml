@@ -69,10 +69,14 @@ spec:
         - protocol: TCP
           port: 443
 
-    # Redis
+    # Redis (all three database subnets for Multi-AZ ElastiCache)
     - to:
         - ipBlock:
-            cidr: 10.0.128.0/20
+            cidr: 10.0.128.0/20  # db subnet AZ-a (cidrsubnet 10.0.0.0/16, 4, 8)
+        - ipBlock:
+            cidr: 10.0.144.0/20  # db subnet AZ-b (cidrsubnet 10.0.0.0/16, 4, 9)
+        - ipBlock:
+            cidr: 10.0.160.0/20  # db subnet AZ-c (cidrsubnet 10.0.0.0/16, 4, 10)
       ports:
         - protocol: TCP
           port: 6379

@@ -16,19 +16,6 @@ metadata:
   annotations:
     eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/redemption-prod-fluent-bit
 ---
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: redemption-config
-  namespace: redemption
-data:
-  app.yaml: |
-    queue:
-      type: sqs
-      url: https://sqs.ap-southeast-1.amazonaws.com/ACCOUNT_ID/redemption-events
-      maxMessages: 10
-      visibilityTimeout: 60
----
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

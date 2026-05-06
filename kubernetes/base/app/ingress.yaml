@@ -9,7 +9,7 @@ metadata:
     alb.ingress.kubernetes.io/load-balancer-name: redemption-prod-alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-southeast-1:ACCOUNT_ID:certificate/CERT_ID
     alb.ingress.kubernetes.io/ssl-policy: ELBSecurityPolicy-TLS13-1-2-2021-06
@@ -19,15 +19,8 @@ metadata:
     alb.ingress.kubernetes.io/healthy-threshold-count: "2"
     alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
     alb.ingress.kubernetes.io/wafv2-acl-arn: arn:aws:wafv2:ap-southeast-1:ACCOUNT_ID:regional/webacl/redemption-prod-waf/WAF_ID
-    alb.ingress.kubernetes.io/load-balancer-attributes: >
-      access_logs.s3.enabled=true,
-      access_logs.s3.bucket=redemption-prod-alb-logs,
-      idle_timeout.timeout_seconds=60,
-      routing.http.drop_invalid_header_fields.enabled=true
-    alb.ingress.kubernetes.io/target-group-attributes: >
-      stickiness.enabled=false,
-      deregistration_delay.timeout_seconds=30,
-      slow_start.duration_seconds=30
+    alb.ingress.kubernetes.io/load-balancer-attributes: "access_logs.s3.enabled=true,access_logs.s3.bucket=redemption-prod-alb-logs,idle_timeout.timeout_seconds=60,routing.http.drop_invalid_header_fields.enabled=true"
+    alb.ingress.kubernetes.io/target-group-attributes: "stickiness.enabled=false,deregistration_delay.timeout_seconds=30,slow_start.duration_seconds=30"
 spec:
   ingressClassName: alb
   rules:

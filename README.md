@@ -22,7 +22,7 @@ kubernetes/
 │   ├── hpa/                   # HPA (6–60 replicas, CPU 60% / memory 70%)
 │   ├── pdb/                   # PodDisruptionBudget (minAvailable: 4)
 │   ├── network-policies/      # Default-deny + explicit ALB/DNS/AWS/Redis allows
-│   └── logging/               # Fluent Bit ServiceAccount + ConfigMap (ships logs to CloudWatch)
+│   └── logging/               # Fluent Bit DaemonSet + ServiceAccount + ConfigMap (CRI parser, ships to CloudWatch)
 └── overlays/
     └── production/            # Image pin, resource upgrades, IRSA ARN injection, Karpenter NodePool
 

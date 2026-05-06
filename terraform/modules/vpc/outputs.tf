@@ -23,10 +23,6 @@ output "database_subnet_ids" {
   value       = aws_subnet.database[*].id
 }
 
-output "db_subnet_group_name" {
-  description = "Database subnet group name"
-  value       = aws_db_subnet_group.main.name
-}
 
 output "nat_gateway_ips" {
   description = "NAT Gateway public IPs"

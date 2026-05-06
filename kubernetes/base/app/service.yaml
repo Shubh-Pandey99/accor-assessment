@@ -13,9 +13,5 @@ spec:
       port: 80
       targetPort: http
       protocol: TCP
-    - name: grpc
-      port: 9090
-      targetPort: grpc
-      protocol: TCP
   selector:
     app.kubernetes.io/name: redemption-service

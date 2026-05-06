@@ -7,7 +7,6 @@ data:
   config.yaml: |
     server:
       port: 8080
-      grpcPort: 9090
       readTimeout: 30s
       writeTimeout: 30s
       shutdownTimeout: 30s
@@ -29,6 +28,6 @@ data:
       ttl: 300
 
     rateLimit:
-      enabled: true
+      enabled: false
       requestsPerSecond: 1000   # placeholder — tune based on baseline traffic
       burst: 100                 # placeholder — tune based on baseline traffic

@@ -1,5 +1,4 @@
 # The Redemption — Infrastructure Design
-*Accor APAC | ap-southeast-1 | Cloud Engineer Assessment*
 
 ## Overview
 
@@ -78,7 +77,7 @@ We strictly avoid using broad node-level instance profiles. If a container is ev
 - ALB access logs stored in an S3 bucket provisioned by Terraform.
 - Post-launch: migrate to Amazon Managed Prometheus + Grafana for richer dashboards and longer-window analysis. CloudWatch is sufficient for launch and keeps operational complexity down while the team stabilises.
 
-**SLOs:** Availability 99.95% (~4.4 hours downtime/year), p99 latency < 500ms, error rate < 0.1%.
+**SLO targets:** Availability ≥ 99.95%, p99 latency < 500ms, error rate < 0.1%. These are design targets, not established SLOs — baselines will be set from real traffic once the service launches.
 
 ## E. CI/CD
 
@@ -106,11 +105,20 @@ The deploy job is skipped by default in this assessment repository (AWS OIDC and
 - CloudWatch alarms are configured to fire only on business-meaningful signals (like user-facing 5xx errors or high latency) rather than noisy infrastructure metrics like high CPU on individual pods.
 
 **Team delegation (1 Senior + 2 Juniors, ~3–4 weeks):**
-- **Senior:** VPC, EKS cluster, IAM/IRSA, Karpenter setup, WAF, security review of all manifests before go-live.
-- **Junior 1:** Kubernetes manifests (Deployment, HPA, PDB, network policies), production environment validation, rolling update testing.
-- **Junior 2:** Monitoring setup (CloudWatch log groups, SNS, alarms), runbook authoring, load testing with k6 or Locust to validate the 10x spike scenario.
 
-The senior owns anything touching IAM or network topology — mistakes there are hard to recover from. The juniors own the K8s layer where mistakes are visible quickly and rollback is a single command.
+| Task | Owner | Notes |
+|------|-------|-------|
+| VPC design, subnet strategy, NAT gateways, VPC endpoints | Senior | Networking decisions have blast-radius implications; needs senior judgment |
+| EKS cluster module, Karpenter v1 NodePool/EC2NodeClass, IRSA trust policies | Senior | Core platform; mistakes here cascade everywhere |
+| KMS, WAF, Secrets Manager, security module | Senior | IAM + crypto decisions need experience |
+| Kubernetes manifests — Deployment, Service, ConfigMap, Ingress | Junior 1 | Well-scoped; senior reviews for security context |
+| HPA, PDB, network policies | Junior 1 | Pattern-driven; senior sets the acceptance criteria |
+| Fluent Bit DaemonSet, CloudWatch log groups, SNS/alarm wiring | Junior 1 | Straightforward with the IRSA role already in place |
+| CI/CD pipeline (GitHub Actions), ECR repo, image scanning | Junior 2 | Isolated from platform; good learning task |
+| DynamoDB table, SQS queue, terraform.tfvars, outputs | Junior 2 | Low-risk resource provisioning |
+| Architecture diagram and design document | All (senior owns) | Juniors contribute sections; senior writes the architecture narrative |
+
+Gating: Senior completes the VPC and EKS modules first (end of Week 1). Juniors work in parallel from Week 2 onwards on K8s manifests and CI/CD respectively. Senior reviews all PRs and unblocks on IAM questions.
 
 ## Infrastructure Cost Strategy
 
@@ -119,10 +127,10 @@ To keep infrastructure costs highly efficient, we reserve on-demand instances st
 ## Known Gaps
 
 - **Application code not included** — infrastructure only, per assessment scope.
-- **Prometheus / Grafana** — CloudWatch used initially; migrate to AMP/AMG post-launch.
 - **Canary deployments** — Currently rolling updates (`maxUnavailable: 0`); Argo Rollouts planned for request-level traffic shifting post-launch.
 - **ElastiCache Redis** — Database-tier subnet scaffolding and network policy egress rule are in place; cluster provisioning deferred until the application requires it.
 - **ECR lifecycle policy** — Retain last 30 images; deferred to post-launch hygiene once image cadence is known.
 - **Karpenter spot interruption queue** — SQS-based interruption handling (EventBridge → SQS → Karpenter proactive drain) not provisioned; Karpenter's default 2-minute IMDS warning path handles reclamation. Add as Day-2 improvement.
 - **Interface VPC endpoints for SQS, CloudWatch Logs, Secrets Manager** — not provisioned; calls route through NAT. Add post-launch.
+- **SNS alarm routing** — `warning_alerts` topic exists (used as `ok_actions` on CloudWatch alarms) but has no subscription. A second email subscription would be noisy since both alarms use the same `alert_email`. Route to a separate Slack/PagerDuty endpoint or a lower-urgency email alias post-launch.
 - **CloudWatch alarms require two applies** — ALB is provisioned by the Load Balancer Controller (not Terraform). Set `alb_deployed = true` after the ALB is live and re-apply.

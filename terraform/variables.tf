@@ -8,11 +8,6 @@ variable "environment" {
   description = "Deployment environment"
   type        = string
   default     = "production"
-
-  validation {
-    condition     = contains(["production"], var.environment)
-    error_message = "Environment must be: production."
-  }
 }
 
 variable "cluster_name" {

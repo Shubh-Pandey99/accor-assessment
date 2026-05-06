@@ -87,6 +87,10 @@ jobs:
         env:
           ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
         run: |
+          if [ ! -f Dockerfile ]; then
+            echo "No Dockerfile found — skipping image build (infrastructure-only repo)"
+            exit 0
+          fi
           aws ecr get-login-password | docker login --username AWS --password-stdin $ECR_REGISTRY
           docker build -t $ECR_REGISTRY/redemption-service:${{ github.sha }} .
           docker push $ECR_REGISTRY/redemption-service:${{ github.sha }}
