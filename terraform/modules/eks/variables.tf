@@ -15,7 +15,7 @@ variable "eks_public_access_cidrs" {
 
   validation {
     condition     = length(var.eks_public_access_cidrs) == 0 || alltrue([for cidr in var.eks_public_access_cidrs : !contains(["YOUR_VPN_CIDR/32", "203.0.113.0/32"], cidr)])
-    error_message = "Replace placeholder CIDRs with your corporate/VPN CIDR in environments/production/terraform.tfvars before applying."
+    error_message = "Replace placeholder CIDRs with your corporate/VPN CIDR in terraform.tfvars before applying."
   }
 }
 
@@ -29,10 +29,10 @@ variable "log_retention_days" {
   default = 90
 }
 
-variable "alb_arn_suffix" {
-  type        = string
-  description = "ALB ARN suffix (app/<name>/<id>) for CloudWatch alarm dimensions. Get after first deploy: aws elbv2 describe-load-balancers --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' --output text | sed 's|.*loadbalancer/||'"
-  default     = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
+variable "alb_deployed" {
+  type        = bool
+  description = "Set to true after K8s manifests are applied and the ALB is provisioned. Terraform will look up the ALB by name and create CloudWatch alarms automatically."
+  default     = false
 }
 
 variable "alert_email" {

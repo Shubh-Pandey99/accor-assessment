@@ -240,23 +240,6 @@ resource "aws_ecr_repository" "redemption" {
   tags = var.tags
 }
 
-resource "aws_ecr_lifecycle_policy" "redemption" {
-  repository = aws_ecr_repository.redemption.name
-
-  policy = jsonencode({
-    rules = [{
-      rulePriority = 1
-      description  = "Keep last 30 images"
-      selection = {
-        tagStatus   = "any"
-        countType   = "imageCountMoreThan"
-        countNumber = 30
-      }
-      action = { type = "expire" }
-    }]
-  })
-}
-
 # --- DynamoDB Table ---
 
 resource "aws_dynamodb_table" "redemption_transactions" {

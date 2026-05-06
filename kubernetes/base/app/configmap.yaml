@@ -30,11 +30,5 @@ data:
 
     rateLimit:
       enabled: true
-      requestsPerSecond: 1000
-      burst: 5000
-
-    circuitBreaker:
-      enabled: true
-      threshold: 5
-      timeout: 30s
-      maxRequests: 100
+      requestsPerSecond: 1000   # placeholder — tune based on baseline traffic
+      burst: 100                 # placeholder — tune based on baseline traffic

@@ -82,3 +82,4 @@ VPC Interface Endpoints are used selectively (ECR, STS) where data volume justif
 - **Prometheus / Grafana** — CloudWatch is used initially; migrate to AMP/AMG post-launch.
 - **Canary Deployments** — Currently using rolling updates; Argo Rollouts planned for traffic shifting.
 - **ElastiCache Redis** — Network scaffolding is in place, but cluster provisioning is deferred until application requires it.
+- **ECR Lifecycle Policy** — Retain last 30 images; deferred to post-launch hygiene.

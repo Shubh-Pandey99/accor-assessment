@@ -72,8 +72,13 @@ variable "eks_public_access_cidrs" {
   default     = []
 
   validation {
+    condition     = !contains(var.eks_public_access_cidrs, "0.0.0.0/0")
+    error_message = "Do not expose the EKS API endpoint to 0.0.0.0/0. Set a corporate/VPN CIDR or use [] for private-only access."
+  }
+
+  validation {
     condition     = length(var.eks_public_access_cidrs) == 0 || alltrue([for cidr in var.eks_public_access_cidrs : !contains(["YOUR_VPN_CIDR/32", "203.0.113.0/32"], cidr)])
-    error_message = "Set eks_public_access_cidrs to your corporate/VPN CIDR in environments/production/terraform.tfvars before applying."
+    error_message = "Set eks_public_access_cidrs to your corporate/VPN CIDR in terraform.tfvars before applying."
   }
 }
 
@@ -83,10 +88,10 @@ variable "log_retention_days" {
   default     = 90
 }
 
-variable "alb_arn_suffix" {
-  description = "ALB ARN suffix for CloudWatch alarms. Set after first deploy — see monitoring module variable for retrieval command. Re-apply with: terraform apply -target=module.monitoring."
-  type        = string
-  default     = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
+variable "alb_deployed" {
+  description = "Set to true after K8s manifests are applied and the ALB is provisioned. Triggers automatic ALB lookup and CloudWatch alarm creation."
+  type        = bool
+  default     = false
 }
 
 variable "alert_email" {

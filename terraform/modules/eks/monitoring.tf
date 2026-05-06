@@ -51,9 +51,14 @@ resource "aws_sns_topic_subscription" "warning_email" {
   endpoint  = var.alert_email
 }
 
+data "aws_lb" "redemption" {
+  count = var.alb_deployed ? 1 : 0
+  name  = "${var.cluster_name}-alb"
+}
+
 # High 5xx error rate alarm
 resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
-  count = can(regex("REPLACE_AFTER_DEPLOY", var.alb_arn_suffix)) ? 0 : 1
+  count = var.alb_deployed ? 1 : 0
 
   alarm_name          = "${var.cluster_name}-high-5xx-error-rate"
   comparison_operator = "GreaterThanThreshold"
@@ -76,7 +81,7 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
       period      = 60
       stat        = "Sum"
       dimensions = {
-        LoadBalancer = var.alb_arn_suffix
+        LoadBalancer = data.aws_lb.redemption[0].arn_suffix
       }
     }
   }
@@ -89,7 +94,7 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
       period      = 60
       stat        = "Sum"
       dimensions = {
-        LoadBalancer = var.alb_arn_suffix
+        LoadBalancer = data.aws_lb.redemption[0].arn_suffix
       }
     }
   }
@@ -101,7 +106,7 @@ resource "aws_cloudwatch_metric_alarm" "high_error_rate" {
 
 # High p99 latency alarm
 resource "aws_cloudwatch_metric_alarm" "high_latency" {
-  count = can(regex("REPLACE_AFTER_DEPLOY", var.alb_arn_suffix)) ? 0 : 1
+  count = var.alb_deployed ? 1 : 0
 
   alarm_name          = "${var.cluster_name}-high-p99-latency"
   comparison_operator = "GreaterThanThreshold"
@@ -114,12 +119,10 @@ resource "aws_cloudwatch_metric_alarm" "high_latency" {
   alarm_description   = "P99 latency exceeds 500ms for 3 consecutive periods"
 
   dimensions = {
-    LoadBalancer = var.alb_arn_suffix
+    LoadBalancer = data.aws_lb.redemption[0].arn_suffix
   }
 
   alarm_actions = [aws_sns_topic.critical_alerts.arn]
   ok_actions    = [aws_sns_topic.warning_alerts.arn]
   tags          = var.tags
 }
-
-

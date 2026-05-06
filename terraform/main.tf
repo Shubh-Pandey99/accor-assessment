@@ -41,7 +41,7 @@ module "eks" {
   eks_public_access_cidrs = var.eks_public_access_cidrs
 
   log_retention_days = var.log_retention_days
-  alb_arn_suffix     = var.alb_arn_suffix
+  alb_deployed       = var.alb_deployed
   alert_email        = var.alert_email
 
   tags = local.common_tags

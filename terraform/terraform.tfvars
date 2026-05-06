@@ -22,12 +22,8 @@ log_retention_days = 90
 # SNS alert subscriptions — AWS sends a confirmation email on first apply; click the link.
 alert_email = "oncall@example.com"
 
-# Set after first deploy. Retrieve with:
-# aws elbv2 describe-load-balancers \
-#   --query 'LoadBalancers[?LoadBalancerName==`redemption-prod-alb`].LoadBalancerArn' \
-#   --output text | sed 's|.*loadbalancer/||'
-# Then re-apply: terraform apply -target=module.monitoring
-alb_arn_suffix = "app/redemption-prod-alb/REPLACE_AFTER_DEPLOY"
+# Set after first deploy.
+alb_deployed = false
 
 additional_tags = {
   BusinessUnit = "loyalty-program"
