@@ -44,3 +44,28 @@ output "node_instance_profile_name" {
   value       = module.eks.node_instance_profile_name
 }
 
+output "ecr_repository_url" {
+  description = "ECR repository URL for the redemption-service image (used in CI/CD push step)"
+  value       = module.security.ecr_repository_url
+}
+
+output "redemption_service_role_arn" {
+  description = "IRSA role ARN for the redemption-service pods (annotate ServiceAccount in inject-arns.yaml)"
+  value       = module.security.redemption_service_role_arn
+}
+
+output "fluent_bit_role_arn" {
+  description = "IRSA role ARN for Fluent Bit pods (annotate ServiceAccount in inject-arns.yaml)"
+  value       = module.security.fluent_bit_role_arn
+}
+
+output "waf_acl_arn" {
+  description = "WAFv2 Web ACL ARN for the ALB Ingress annotation"
+  value       = module.security.waf_acl_arn
+}
+
+output "alb_logs_bucket_name" {
+  description = "S3 bucket for ALB access logs (set in Ingress load-balancer-attributes annotation)"
+  value       = module.eks.alb_logs_bucket_name
+}
+

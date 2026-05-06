@@ -7,22 +7,26 @@ AWS EKS infrastructure for Accor's hotel loyalty point deduction service.
 ```
 terraform/
 ├── modules/
-│   ├── vpc/                   # Multi-AZ VPC, NAT, VPC endpoints
-│   ├── eks/                   # Cluster, node groups, Karpenter IAM, monitoring
-│   └── security/              # IRSA, WAF, KMS, Secrets Manager
+│   ├── vpc/                   # Multi-AZ VPC, NAT, VPC endpoints (S3, ECR, STS, DynamoDB)
+│   ├── eks/                   # Cluster, node groups, Karpenter IAM, CloudWatch monitoring
+│   └── security/              # IRSA roles, WAF, KMS, Secrets Manager, ECR, DynamoDB, SQS
+├── main.tf                    # Module orchestration
+├── outputs.tf                 # Key outputs (cluster, IRSA ARNs, ECR URL, WAF ARN)
+├── variables.tf               # Input variable definitions
 ├── terraform.tfvars           # Environment configuration
+└── versions.tf                # Provider and backend config (S3 + DynamoDB lock)
 
 kubernetes/
 ├── base/
-│   ├── app/                   # Deployment, Service, Ingress, ConfigMap
-│   ├── hpa/                   # HPA config
-│   ├── pdb/
-│   ├── network-policies/
-│   └── monitoring/            # Fluent Bit ServiceAccount (ships logs to CloudWatch)
+│   ├── app/                   # Deployment, Service, Ingress, ConfigMap, ServiceAccount
+│   ├── hpa/                   # HPA (6–60 replicas, CPU 60% / memory 70%)
+│   ├── pdb/                   # PodDisruptionBudget (minAvailable: 4)
+│   ├── network-policies/      # Default-deny + explicit ALB/DNS/AWS/Redis allows
+│   └── logging/               # Fluent Bit ServiceAccount + ConfigMap (ships logs to CloudWatch)
 └── overlays/
-    └── production/
+    └── production/            # Image pin, resource upgrades, IRSA ARN injection, Karpenter NodePool
 
-.github/workflows/             # CI/CD
+.github/workflows/ci-cd.yaml  # Validate (always) + Deploy (conditional on AWS credentials)
 docs/                          # Design document
 diagrams/                      # Architecture diagram (SVG)
 ```
@@ -31,22 +35,9 @@ diagrams/                      # Architecture diagram (SVG)
 
 Architecture diagram: [`diagrams/architecture.svg`](diagrams/architecture.svg) — open directly in the browser or any SVG viewer.
 
-## Known Gaps
+## Design & Architecture
 
-Things that aren't done or aren't in scope for this assessment:
-
-- Application code is not included — infra only.
-- Redis/ElastiCache is intentionally not provisioned in this assessment. The NetworkPolicy Redis egress rule and DB-tier subnet scaffolding are forward-compatibility placeholders for a future caching layer — not a broken implementation.
-- ElastiCache endpoint injection into K8s ConfigMap is not implemented (needs External Secrets Operator or init container pattern).
-- Canary deploy is a rolling update with `maxUnavailable: 0` — request-level traffic splitting (Argo Rollouts) is deferred post-launch.
-- Custom HPA metrics (RPS via Prometheus Adapter) are deferred — CPU + memory HPA is sufficient until real traffic data is available.
-- EKS public endpoint restricted to configured CIDRs — set `eks_public_access_cidrs` to your VPN/office CIDR in `terraform/terraform.tfvars` before applying. Private-only endpoint is the production end-state.
-- **CloudWatch alarms require two Terraform applies.** The ALB is provisioned by the Load Balancer Controller after `kubectl apply`, not by Terraform. Workflow: (1) `terraform apply`; (2) deploy K8s manifests and wait ~2 minutes for the ALB to be created; (3) set `alb_deployed = true` in `terraform.tfvars`; (4) `terraform apply`. Terraform looks up the ALB by name automatically — no manual ARN retrieval needed.
-- **Karpenter spot interruption handling** — Karpenter supports an SQS-based interruption queue (EventBridge routes EC2 spot interruption/rebalance events → SQS → Karpenter for proactive draining). Not provisioned in this assessment; Karpenter's default 2-minute IMDS warning path handles spot reclamation. Add the queue + EventBridge rules + `spec.interruptionQueueName` in EC2NodeClass as a Day-2 operational improvement.
-- **Interface VPC endpoints for SQS, CloudWatch Logs, Secrets Manager** — not provisioned; those calls route through the NAT gateways. The endpoints add a fixed per-AZ hourly charge; at low traffic volume the savings on NAT data processing don't offset that fixed cost. Worth adding post-launch once traffic volume makes the trade-off clear.
-- **ECR lifecycle policy** — retain last 30 images to bound storage costs. Straightforward to add once the pipeline is running and image cadence is known.
-
-See [docs/design-document.md](docs/design-document.md) for full context on these.
+For a deep dive into the architecture, scaling strategy, security controls, and a list of known gaps (like deferred ElastiCache provisioning or the two-step apply for CloudWatch alarms), please refer to the [Design Document](docs/design-document.md).
 
 ## Prerequisites
 
@@ -59,17 +50,17 @@ See [docs/design-document.md](docs/design-document.md) for full context on these
 ## Getting started
 
 ```bash
-# infra
+# 1. Provision infrastructure
 cd terraform
 terraform init
 terraform plan
 terraform apply
 
-# kubeconfig
+# 2. Configure kubectl
 aws eks update-kubeconfig --region ap-southeast-1 --name redemption-prod
 
-# Bootstrap: AWS Load Balancer Controller (required for ALB Ingress to work)
-# The IRSA role is provisioned by Terraform. Run once after first `terraform apply`.
+# 3. Bootstrap: AWS Load Balancer Controller (required for ALB Ingress)
+#    IRSA role is provisioned by Terraform. Run once after first terraform apply.
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
@@ -78,32 +69,22 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.create=true \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform output -raw alb_controller_role_arn)"
-# Note: Helm is used for one-time bootstrap (same pattern as Karpenter).
-# The controller itself is not managed via Terraform to keep state lean.
 
-# Bootstrap: Karpenter (required for burst node autoscaling)
-# See docs/design-document.md for full Karpenter bootstrap instructions.
+# 4. Bootstrap: Karpenter (required for burst node autoscaling)
+#    See docs/design-document.md for full Karpenter bootstrap steps.
 
-# deploy
+# 5. Inject account-specific ARNs and deploy all manifests
+#    The production overlay patches IRSA ARNs and the SQS queue URL automatically.
+#    Replace ACCOUNT_ID / CERT_ID / WAF_ID placeholders first (or let CI/CD do it).
 kustomize build kubernetes/overlays/production | kubectl apply -f -
+
+# 6. Enable CloudWatch alarms (after ALB is live)
+#    Set alb_deployed = true in terraform.tfvars, then:
+terraform apply
 ```
 
-## Key decisions
 
-- **Baseline + Karpenter** — on-demand baseline nodes, Karpenter provisions spot for burst. Note: baseline nodes carry a `role=baseline` label but **no taint**, so burst pods can land on on-demand capacity if Karpenter hasn't scaled yet. Add `role=baseline:NoSchedule` taint to the managed node group and a matching toleration to the Deployment for strict cost isolation in production.
-- **HPA + Karpenter** — pod-level and node-level autoscaling
-- **Private subnets + VPC endpoints** — workloads never exposed to public internet
-- **IRSA** — pod-level IAM, no long-lived credentials
-- **CI/CD**: GitHub Actions validates Terraform and K8s manifests on PR. The live deployment job on merge to `main` is conditionally skipped by default to prevent CI failure since AWS credentials (OIDC) and ECR secrets are not populated in this assessment repository.
-
-## SLOs
-
-- Availability: 99.95%
-- P99 latency: < 500ms
-- Error rate: < 0.1%
-
-See [docs/design-document.md](docs/design-document.md) for full design rationale.
 
 ---
 
-> **Note:** This is infrastructure code for a Cloud Engineer take-home assessment. Some environment-specific values (account IDs, secrets) are placeholder values.
+> **Note:** This is infrastructure code for a Cloud Engineer take-home assessment. Account IDs, certificate ARNs, and WAF IDs are placeholder values that must be substituted before deployment.
