@@ -1,8 +1,4 @@
 # VPC module
-#
-# 3-AZ spread for HA (survives single AZ outage). Private subnets for
-# workloads, public only for ALB/NAT. Dedicated database subnets for
-# RDS/ElastiCache isolation. VPC flow logs shipped to S3.
 
 data "aws_region" "current" {}
 
@@ -24,7 +20,7 @@ resource "aws_internet_gateway" "main" {
   })
 }
 
-# Public subnets - ALB and NAT gateways live here
+# Public subnets
 resource "aws_subnet" "public" {
   count = length(var.availability_zones)
 
@@ -40,7 +36,7 @@ resource "aws_subnet" "public" {
   })
 }
 
-# Private subnets - EKS worker nodes
+# Private subnets
 resource "aws_subnet" "private" {
   count = length(var.availability_zones)
 
@@ -56,7 +52,7 @@ resource "aws_subnet" "private" {
   })
 }
 
-# Database subnets - isolated, no direct internet
+# Database subnets
 resource "aws_subnet" "database" {
   count = length(var.availability_zones)
 
@@ -78,7 +74,7 @@ resource "aws_db_subnet_group" "main" {
   })
 }
 
-# One NAT gateway per AZ so a single AZ failure doesn't kill egress
+# NAT gateways
 resource "aws_eip" "nat" {
   count  = length(var.availability_zones)
   domain = "vpc"
@@ -122,7 +118,7 @@ resource "aws_route_table_association" "public" {
   route_table_id = aws_route_table.public.id
 }
 
-# Each private subnet gets its own route table pointing at its AZ's NAT gw
+# Private route tables
 resource "aws_route_table" "private" {
   count  = length(var.availability_zones)
   vpc_id = aws_vpc.main.id
@@ -143,8 +139,7 @@ resource "aws_route_table_association" "private" {
   route_table_id = aws_route_table.private[count.index].id
 }
 
-# Database subnets get an isolated route table — local VPC traffic only, no NAT egress.
-# This matches the architecture design: DB tier is not internet-routable.
+# DB tier: Isolated route table (no internet egress)
 resource "aws_route_table" "database" {
   vpc_id = aws_vpc.main.id
 
@@ -159,7 +154,7 @@ resource "aws_route_table_association" "database" {
   route_table_id = aws_route_table.database.id
 }
 
-# --- VPC flow logs (security/compliance) ---
+# --- VPC flow logs ---
 
 resource "aws_flow_log" "main" {
   vpc_id                   = aws_vpc.main.id
@@ -217,7 +212,7 @@ resource "aws_s3_bucket_public_access_block" "flow_logs" {
   restrict_public_buckets = true
 }
 
-# --- VPC endpoints (private access to AWS services, avoids NAT costs) ---
+# --- VPC endpoints ---
 
 resource "aws_security_group" "vpc_endpoints" {
   name_prefix = "${var.name_prefix}-vpce-"
@@ -290,8 +285,7 @@ resource "aws_vpc_endpoint" "sts" {
 }
 
 resource "aws_vpc_endpoint" "dynamodb" {
-  # DynamoDB supports Gateway endpoints (free). Interface endpoints for DynamoDB
-  # cost ~$21/month across 3 AZs and provide no benefit over the Gateway type.
+  # Gateway endpoint for DynamoDB
   vpc_id            = aws_vpc.main.id
   service_name      = "com.amazonaws.${data.aws_region.current.name}.dynamodb"
   vpc_endpoint_type = "Gateway"

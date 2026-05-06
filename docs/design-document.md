@@ -9,7 +9,7 @@ The Redemption is a hotel loyalty point deduction service handling steady baseli
 
 **VPC:** 10.0.0.0/16 across three AZs. Public subnets for the ALB and NAT gateways only. Private subnets for EKS workers. Database subnets (isolated, no route to internet) for ElastiCache when the app team is ready to deploy it.
 
-**NAT:** One NAT gateway per AZ. A single NAT saves ~$65/month but makes the entire cluster dependent on one AZ's network path. Not worth it here.
+**NAT:** One NAT gateway per AZ to prevent a single AZ failure from killing egress.
 
 **EKS:** Managed control plane in private subnets. Control plane logs (API, audit, authenticator) shipped to CloudWatch. API server has public access enabled for initial deployment — should be locked to a VPN CIDR before production.
 
@@ -21,15 +21,13 @@ The Redemption is a hotel loyalty point deduction service handling steady baseli
 
 The 10x spike is the core problem. The approach is two layers:
 
-**Layer 1 — Pod scaling (HPA):** 6 baseline replicas scale up to 60 on CPU (60% threshold) and memory (70% threshold). Scale-up is aggressive: 0-second stabilization window, can double pod count every 60 seconds. Scale-down is conservative: 5-minute cooldown, maximum 10% reduction per minute. The asymmetry is intentional — overshooting on scale-up costs a few dollars, undershooting during a flash sale costs revenue.
+**Layer 1 — Pod scaling (HPA):** 6 baseline replicas scale up to 60 on CPU (60% threshold) and memory (70% threshold). Scale-up is aggressive (0-second stabilization) to handle sudden spikes. Scale-down is conservative (5-minute cooldown) to prevent flapping.
 
-**Layer 2 — Node scaling (Karpenter):** When HPA creates pending pods, Karpenter provisions right-sized spot nodes in ~60 seconds. This is the main reason I chose Karpenter over Cluster Autoscaler — CA requires pre-defined node groups and can't right-size; Karpenter picks the cheapest instance that fits the pending pod's requests. I went back and forth on whether to include Karpenter in this assessment — it adds real operational complexity and a team new to EKS might be better served by Cluster Autoscaler initially. I kept it because the burst requirement is the central problem here and Karpenter's right-sizing is the most direct answer to it. The downside is operational complexity: Karpenter has its own CRDs, IAM setup, and NodePool mental model. Worth it given the burst requirement.
-
-**One risk worth calling out:** ap-southeast-1 has smaller spot capacity pools than us-east-1 or eu-west-1. During a major APAC flash sale, other services will also be scaling simultaneously. The on-demand fallback handles this, but expect 60-90 seconds of elevated latency while Karpenter switches strategies. Mitigation: the 3 baseline on-demand nodes carry minimum load and don't drain between flash sales.
+**Layer 2 — Node scaling (Karpenter):** When HPA creates pending pods, Karpenter provisions right-sized spot nodes in ~60 seconds. Spot capacity is optimized, with on-demand serving as a fallback.
 
 ## C. Security & Networking
 
-**Network topology:** ALB sits in public subnets with WAF attached. Three rules in scope: rate limit (5,000 req/5 min/IP), AWSManagedRulesCommonRuleSet (OWASP top 10), and AWSManagedRulesKnownBadInputsRuleSet. SQLi managed rule excluded — the redemption service accepts structured JSON from authenticated Accor backend services, not user-supplied free-text. Rate limiting and OWASP common rules cover the actual threat surface. EKS workers are in private subnets with no direct internet access. AWS API calls for ECR, DynamoDB, and STS go through VPC endpoints; SQS, CloudWatch Logs, and Secrets Manager calls route through NAT — Interface endpoints for those services are a cost optimisation deferred to post-launch (see Known Gaps).
+**Network topology:** ALB sits in public subnets with WAF attached for basic edge protection. EKS workers are in private subnets with no direct internet access. AWS API calls for ECR, DynamoDB, and STS go through VPC endpoints; SQS, CloudWatch Logs, and Secrets Manager calls route through NAT.
 
 **Pod-level IAM (IRSA):** Each pod assumes its own IAM role via OIDC federation, scoped to `redemption-*` DynamoDB tables, SQS queues, and Secrets Manager paths. No node-level instance profile with broad permissions — if a container is compromised, the blast radius is limited to the redemption service's own resources.
 
@@ -73,25 +71,14 @@ The 10x spike is the core problem. The approach is two layers:
 
 The senior owns anything touching IAM or network topology — mistakes there are hard to recover from. The juniors own the K8s layer where mistakes are visible quickly and rollback is a single command.
 
-## Cost Estimate (ap-southeast-1, monthly)
+## Infrastructure Cost Strategy
 
-| Resource | Est. Cost |
-|---|---|
-| EKS control plane | $73 |
-| 3× m6i.xlarge on-demand (baseline) | $430 |
-| NAT gateways (3×) | $96 |
-| ALB + WAF | $50 |
-| CloudWatch Logs + Alarms | $35 |
-| DynamoDB (on-demand) | $100 |
-| **Baseline total** | **~$785-850/month** |
-
-Flash sale burst (Karpenter spot nodes): add ~$40-120/hour depending on duration and spot price at the time.
+Compute costs are optimized by using On-Demand instances strictly for baseline capacity, relying on Karpenter to aggressively scale Spot instances for flash sale bursts. 
+VPC Interface Endpoints are used selectively (ECR, STS) where data volume justifies the fixed per-AZ hourly charge.
 
 ## Known Gaps
 
 - **Application code not included** — infrastructure only, per assessment scope
-- **ElastiCache Redis** — the subnet group and security group are in the VPC module, but the Redis cluster itself is not provisioned. The app ConfigMap has a placeholder endpoint. Deploy order: Terraform → get Redis endpoint from output → inject via External Secrets Operator or kustomize patch before app deploy
-- **Prometheus Adapter / custom HPA metrics** — CPU + memory HPA is deployed. Adding an RPS-based metric would require installing the Prometheus Adapter via Helm. Deferred — need real traffic data before tuning custom metrics anyway
-- **EKS API server CIDR** — restricted via `eks_public_access_cidrs` variable (validated in `variables.tf` to reject the `0.0.0.0/0` default). Set to your VPN/office CIDR in `environments/production/terraform.tfvars` before apply. Private-only endpoint is the production end-state once a bastion or VPN is in place.
-- **Canary deployments** — rolling update with `maxUnavailable: 0` is the current strategy. Proper canary (progressive traffic shifting) would use Argo Rollouts — worth adding once the team is comfortable with the base setup
-- **PCI compliance** — resources use AWS-managed KMS keys. PCI-DSS would require CMKs for the full audit trail; deferred as out of scope for this assessment.
+- **Prometheus / Grafana** — CloudWatch is used initially; migrate to AMP/AMG post-launch.
+- **Canary Deployments** — Currently using rolling updates; Argo Rollouts planned for traffic shifting.
+- **ElastiCache Redis** — Network scaffolding is in place, but cluster provisioning is deferred until application requires it.

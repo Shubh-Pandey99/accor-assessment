@@ -1,13 +1,9 @@
 # Security module
-#
-# IRSA role for the redemption service (least-privilege access to DynamoDB,
-# SQS, KMS, Secrets Manager). WAF with rate limiting and managed rule groups.
 
 data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
-# IRSA role for the redemption service pods.
-# Only gets access to redemption-* tables/queues/secrets, nothing else.
+# IRSA role for redemption service
 resource "aws_iam_role" "redemption_service" {
   name = "${var.cluster_name}-redemption-svc"
 
@@ -122,7 +118,7 @@ resource "aws_secretsmanager_secret" "app_config" {
 resource "aws_secretsmanager_secret_version" "app_config" {
   secret_id = aws_secretsmanager_secret.app_config.id
 
-  # Placeholder — replace with real values via CI/CD or manual bootstrap before first deploy.
+  # Placeholder
   secret_string = jsonencode({
     ACCOR_API_KEY = "REPLACE_ME"
     POINTS_RATE   = "REPLACE_ME"
@@ -134,9 +130,7 @@ resource "aws_secretsmanager_secret_version" "app_config" {
   }
 }
 
-# DynamoDB access is credential-free via IRSA; no secret needed for the data layer.
-# The service uses the redemption_service IAM role (see aws_iam_role.redemption_service above)
-# to authenticate to DynamoDB without any username/password.
+
 
 
 # --- WAF ---
@@ -150,7 +144,7 @@ resource "aws_wafv2_web_acl" "main" {
     allow {}
   }
 
-  # Rate limiting per IP
+  # Rate limiting
   rule {
     name     = "rate-limit"
     priority = 1
@@ -227,8 +221,7 @@ resource "aws_wafv2_web_acl" "main" {
   tags = var.tags
 }
 
-# KMS for application-level data encryption (e.g., PII fields) would be a separate key.
-# Deferred — app encryption is outside the scope of this infrastructure assessment.
+
 
 # --- ECR Repository ---
 
@@ -298,9 +291,6 @@ resource "aws_sqs_queue" "redemption" {
 }
 
 # --- IRSA: AWS Load Balancer Controller ---
-# Must exist before the controller can be installed via Helm.
-# Policy sourced from the official AWS LB Controller minimal policy:
-# https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.7.2/docs/install/iam_policy.json
 
 resource "aws_iam_role" "alb_controller" {
   name = "${var.cluster_name}-alb-controller"

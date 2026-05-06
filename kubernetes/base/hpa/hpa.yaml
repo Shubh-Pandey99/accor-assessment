@@ -1,6 +1,4 @@
-# HPA: CPU + memory. Custom RPS metric deferred post-launch (Prometheus Adapter).
-# Scales up aggressively (0s stabilization) for flash sales,
-# scales down cautiously (5min cooldown) to avoid flapping.
+# Asymmetric scaling: fast scale-up for flash sales, slow scale-down to prevent flapping
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -15,7 +13,7 @@ spec:
     name: redemption-service
 
   minReplicas: 6
-  maxReplicas: 60 # supports 10x spike
+  maxReplicas: 60
 
   metrics:
     - type: Resource
@@ -32,7 +30,7 @@ spec:
           type: Utilization
           averageUtilization: 70
 
-  # TODO: add RPS metric via Prometheus Adapter post-launch.
+  # TODO: add RPS metric via Prometheus Adapter
 
   behavior:
     scaleUp:

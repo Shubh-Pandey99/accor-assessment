@@ -1,4 +1,4 @@
-# Default deny everything, then allow what we need
+# Default deny ingress/egress
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -10,8 +10,7 @@ spec:
     - Ingress
     - Egress
 ---
-# Allow inbound from ALB
-# ALB sends traffic directly to pod IPs in IP target mode; source is public subnet CIDR, not controller pods.
+# Allow inbound from ALB public subnets (IP target mode)
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
@@ -48,7 +47,7 @@ spec:
   policyTypes:
     - Egress
   egress:
-    # DNS - target CoreDNS pods specifically, not the whole kube-system namespace
+    # CoreDNS
     - to:
         - namespaceSelector:
             matchLabels:
@@ -62,7 +61,7 @@ spec:
         - protocol: TCP
           port: 53
 
-    # AWS services — ECR/DynamoDB/STS via VPC endpoints, SQS/CloudWatch/Secrets via NAT
+    # AWS APIs
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

@@ -35,7 +35,5 @@ split-secrets.yaml
 # docs build artifacts
 docs/*.html
 
-# Graphify knowledge graph output
-graphify-out/
-CLAUDE.md
-.claude/
+# scripts not for version control
+redate*.sh
