@@ -85,8 +85,8 @@ resource "aws_eks_cluster" "main" {
     subnet_ids              = var.private_subnet_ids
     endpoint_private_access = true
     # Empty list means private-only. Populated list enables public access restricted to those CIDRs.
-    endpoint_public_access  = length(var.eks_public_access_cidrs) > 0
-    security_group_ids      = [aws_security_group.cluster.id]
+    endpoint_public_access = length(var.eks_public_access_cidrs) > 0
+    security_group_ids     = [aws_security_group.cluster.id]
 
     public_access_cidrs = length(var.eks_public_access_cidrs) > 0 ? var.eks_public_access_cidrs : null
   }
