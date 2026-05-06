@@ -105,7 +105,9 @@ resource "aws_secretsmanager_secret" "app_config" {
 resource "aws_secretsmanager_secret_version" "app_config" {
   secret_id = aws_secretsmanager_secret.app_config.id
 
-  # Placeholder
+  # Seeds the secret with placeholder values on first apply.
+  # lifecycle.ignore_changes prevents Terraform from overwriting values
+  # set operationally via console or CLI after initial provisioning.
   secret_string = jsonencode({
     ACCOR_API_KEY = "REPLACE_ME"
     POINTS_RATE   = "REPLACE_ME"
@@ -214,7 +216,7 @@ resource "aws_wafv2_web_acl" "main" {
 
 resource "aws_ecr_repository" "redemption" {
   name                 = "redemption-service"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
 
   image_scanning_configuration {
     scan_on_push = true
@@ -226,40 +228,6 @@ resource "aws_ecr_repository" "redemption" {
 
   tags = var.tags
 }
-
-# --- DynamoDB Table ---
-
-resource "aws_dynamodb_table" "redemption_transactions" {
-  name         = "redemption-transactions"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "transactionId"
-
-  attribute {
-    name = "transactionId"
-    type = "S"
-  }
-
-  point_in_time_recovery {
-    enabled = true
-  }
-
-  server_side_encryption {
-    enabled = true
-  }
-
-  tags = var.tags
-}
-
-# --- SQS Queue ---
-
-resource "aws_sqs_queue" "redemption" {
-  name                       = "redemption-events"
-  message_retention_seconds  = 86400
-  visibility_timeout_seconds = 30
-  kms_master_key_id          = "alias/aws/sqs"
-  tags                       = var.tags
-}
-
 # --- IRSA: AWS Load Balancer Controller ---
 
 resource "aws_iam_role" "alb_controller" {

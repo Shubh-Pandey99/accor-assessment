@@ -14,8 +14,8 @@ variable "eks_public_access_cidrs" {
   default     = []
 
   validation {
-    condition     = length(var.eks_public_access_cidrs) == 0 || alltrue([for cidr in var.eks_public_access_cidrs : !contains(["YOUR_VPN_CIDR/32", "203.0.113.0/32"], cidr)])
-    error_message = "Replace placeholder CIDRs with your corporate/VPN CIDR in terraform.tfvars before applying."
+    condition     = !contains(var.eks_public_access_cidrs, "0.0.0.0/0")
+    error_message = "Do not expose the EKS API endpoint to 0.0.0.0/0. Restrict to a corporate/VPN CIDR."
   }
 }
 

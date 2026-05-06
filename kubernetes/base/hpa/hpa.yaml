@@ -30,8 +30,6 @@ spec:
           type: Utilization
           averageUtilization: 70
 
-  # TODO: add RPS metric via Prometheus Adapter
-
   behavior:
     scaleUp:
       stabilizationWindowSeconds: 0

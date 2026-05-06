@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Redemption is a hotel loyalty point deduction service handling steady baseline traffic with sudden 10x spikes during flash sales. The infrastructure runs on AWS EKS in Singapore (ap-southeast-1) across three AZs. Zero downtime is a hard requirement — a failed redemption during a flash sale is direct revenue loss, not just a latency issue.
+The Redemption is a hotel loyalty point deduction service handling steady baseline traffic with sudden 10x spikes during flash sales. The infrastructure runs on AWS EKS in Singapore (ap-southeast-1) across three AZs. Zero downtime is a hard requirement. A failed redemption during a flash sale is direct revenue loss, not a latency blip.
 
 ## A. Compute & Architecture
 
@@ -25,7 +25,7 @@ The 10x spike is the core architectural challenge. We tackle this in two layers:
 
 **Layer 1 — Pod scaling (HPA):** We run 6 baseline replicas that scale up to 60 based on CPU (60% threshold) and memory (70% threshold). The scale-up is aggressive (0-second stabilization) to immediately absorb sudden spikes, while scale-down is conservative (5-minute cooldown) to prevent flapping as traffic normalizes.
 
-**Layer 2 — Node scaling (Karpenter):** When the HPA creates pending pods, Karpenter provisions right-sized spot nodes in roughly 60 seconds. We've configured the NodePool with a mix of instance families (`m6i`, `m6a`, `m5`, `m5a`, `c6i`, `c6a`) in large, xlarge, and 2xlarge sizes to ensure spot capacity is always found. To keep operations simple, nodes expire after 720h (30 days) to force automatic patch rotation, and Karpenter aggressively consolidates underutilised nodes after 10 minutes to cut costs between spikes.
+**Layer 2 — Node scaling (Karpenter):** When the HPA creates pending pods, Karpenter provisions right-sized spot nodes in roughly 60 seconds. We've configured the NodePool with a mix of instance families (`m6i`, `m6a`, `m5`, `m5a`, `c6i`, `c6a`) in large, xlarge, and 2xlarge sizes, giving Karpenter enough options to reliably find spot capacity. Spot is substantially cheaper than on-demand for burst windows. Nodes expire after 720h (30 days) to force patch rotation automatically, and Karpenter consolidates underutilised nodes after 10 minutes to cut costs between spikes. Gateway VPC endpoints for S3 and DynamoDB keep high-volume data-plane traffic off the NAT gateways entirely.
 
 ## C. Security & Networking
 
@@ -37,7 +37,7 @@ The 10x spike is the core architectural challenge. We tackle this in two layers:
 - `aws-load-balancer-controller` — EC2/ELB/WAFv2 permissions required for ALB provisioning.
 - `karpenter-controller` — EC2 fleet and pricing permissions for node provisioning.
 
-We strictly avoid using broad node-level instance profiles. If a container is ever compromised, the blast radius remains securely confined to just that service's resources.
+We strictly avoid using broad node-level instance profiles. If a container is ever compromised, the blast radius is contained to that service's resources.
 
 **Network policies:** Default deny on both ingress and egress at the namespace level. Explicit allows:
 - ALB public subnets → pods on port 8080
@@ -63,7 +63,7 @@ We strictly avoid using broad node-level instance profiles. If a container is ev
 
 **Application data stores:**
 - *DynamoDB* (`redemption-transactions`, PAY_PER_REQUEST billing, PITR enabled) — primary transaction store.
-- *SQS* (`redemption-events`, 24h retention, 30s visibility timeout, KMS encrypted) — async event processing.
+- *SQS* (`redemption-events`, 24h retention, 60s visibility timeout, KMS encrypted) — async event processing.
 - *Secrets Manager* (`redemption/app-config`) — API keys and feature flags, auto-rotation enabled.
 - *ECR* (`redemption-service`, image scan on push, KMS encrypted) — container image registry.
 
@@ -73,11 +73,10 @@ We strictly avoid using broad node-level instance profiles. If a container is ev
 - CloudWatch alarms (activated by setting `alb_deployed = true` in `terraform.tfvars` after the ALB is live):
   - 5xx error rate > 1% for 3 consecutive minutes → SNS `critical_alerts` topic.
   - p99 latency > 500ms for 3 consecutive minutes → SNS `critical_alerts` topic.
-- SNS topics: `critical_alerts` and `warning_alerts` with email subscriptions to `alert_email`.
-- ALB access logs stored in an S3 bucket provisioned by Terraform.
+- SNS `critical_alerts` topic with email subscription to `alert_email`.
 - Post-launch: migrate to Amazon Managed Prometheus + Grafana for richer dashboards and longer-window analysis. CloudWatch is sufficient for launch and keeps operational complexity down while the team stabilises.
 
-**SLO targets:** Availability ≥ 99.95%, p99 latency < 500ms, error rate < 0.1%. These are design targets, not established SLOs — baselines will be set from real traffic once the service launches.
+**SLO targets:** Not yet established — no production traffic baseline exists. Working assumptions: p99 < 500ms and error rate < 0.1%, based on the application team's NFR document. These will be calibrated after the first real traffic window.
 
 ## E. CI/CD
 
@@ -91,7 +90,7 @@ GitHub Actions workflow (`.github/workflows/ci-cd.yaml`) triggers on push to `ma
 **Deploy job (conditional on `AWS_DEPLOY_ROLE_ARN` secret):**
 - Authenticates to AWS via OIDC (no long-lived credentials stored in GitHub).
 - Builds and pushes the container image to ECR (`$ECR_REPO:$SHA`).
-- Substitutes account-specific values (account ID, certificate ARN, WAF ARN) into manifests via `sed`.
+- Substitutes account-specific values (account ID, certificate ARN, WAF ARN) into manifests via `sed`. This is pragmatic for the assessment — the production target is Terraform-generated ConfigMaps or External Secrets Operator to remove the sed dependency.
 - Verifies no placeholder tokens remain post-substitution.
 - Deploys via `kubectl apply` and waits for rollout status.
 
@@ -99,9 +98,9 @@ The deploy job is skipped by default in this assessment repository (AWS OIDC and
 
 ## F. Operations
 
-**Reducing Day-2 operational toil:**
-- Setting Karpenter's `expireAfter: 720h` means nodes are automatically rotated every 30 days, eliminating the need for manual OS patching windows.
-- The CI pipeline runs `terraform plan` on every PR, acting as an automated guardrail against configuration drift.
+Most of the Day-2 work runs itself:
+- Karpenter's `expireAfter: 720h` rotates nodes every 30 days, so there are no manual patching windows.
+- The CI pipeline validates Terraform (`validate` + `fmt -check`) and lints the Kustomize overlay on every PR. `terraform plan` is intentionally excluded from CI — it requires live AWS credentials and a bootstrapped backend, so it runs locally or in a separate privileged workflow before applying.
 - CloudWatch alarms are configured to fire only on business-meaningful signals (like user-facing 5xx errors or high latency) rather than noisy infrastructure metrics like high CPU on individual pods.
 
 **Team delegation (1 Senior + 2 Juniors, ~3–4 weeks):**
@@ -115,20 +114,20 @@ The deploy job is skipped by default in this assessment repository (AWS OIDC and
 | HPA, PDB, network policies | Junior 1 | Pattern-driven; senior sets the acceptance criteria |
 | Fluent Bit DaemonSet, CloudWatch log groups, SNS/alarm wiring | Junior 1 | Straightforward with the IRSA role already in place |
 | CI/CD pipeline (GitHub Actions), ECR repo, image scanning | Junior 2 | Isolated from platform; good learning task |
-| DynamoDB table, SQS queue, terraform.tfvars, outputs | Junior 2 | Low-risk resource provisioning |
 | Architecture diagram and design document | All (senior owns) | Juniors contribute sections; senior writes the architecture narrative |
 
 Gating: Senior completes the VPC and EKS modules first (end of Week 1). Juniors work in parallel from Week 2 onwards on K8s manifests and CI/CD respectively. Senior reviews all PRs and unblocks on IAM questions.
 
 ## Infrastructure Cost Strategy
 
-To keep infrastructure costs highly efficient, we reserve on-demand instances strictly for our predictable baseline traffic. When a massive flash-sale hits, Karpenter aggressively provisions much cheaper spot instances to absorb the burst. We also use Gateway VPC endpoints (for S3 and DynamoDB) to eliminate NAT data-processing fees entirely on high-volume paths. Interface endpoints (for ECR and STS) carry a fixed hourly cost, but the call volume justifies their presence. Conversely, we deferred endpoints for SQS, CloudWatch, and Secrets Manager until their traffic volume grows enough to offset their fixed AZ costs.
+Spot instances for burst + on-demand for baseline. Gateway endpoints (S3, DynamoDB) eliminate NAT data-processing fees on high-volume paths. Interface endpoints (ECR, STS) justified by call volume; SQS, CloudWatch Logs, and Secrets Manager route through NAT until post-launch traffic makes the cost trade-off clear.
 
 ## Known Gaps
 
 - **Application code not included** — infrastructure only, per assessment scope.
 - **Canary deployments** — Currently rolling updates (`maxUnavailable: 0`); Argo Rollouts planned for request-level traffic shifting post-launch.
 - **ElastiCache Redis** — Database-tier subnet scaffolding and network policy egress rule are in place; cluster provisioning deferred until the application requires it.
+- **DynamoDB access patterns** — Table schema uses only `transactionId` as the hash key. Real query patterns (e.g., all transactions for a user in the last 30 days) require at least one GSI. Schema to be finalised once the application team confirms access patterns.
 - **ECR lifecycle policy** — Retain last 30 images; deferred to post-launch hygiene once image cadence is known.
 - **Karpenter spot interruption queue** — SQS-based interruption handling (EventBridge → SQS → Karpenter proactive drain) not provisioned; Karpenter's default 2-minute IMDS warning path handles reclamation. Add as Day-2 improvement.
 - **Interface VPC endpoints for SQS, CloudWatch Logs, Secrets Manager** — not provisioned; calls route through NAT. Add post-launch.

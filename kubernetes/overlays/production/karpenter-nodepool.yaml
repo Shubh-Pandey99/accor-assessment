@@ -43,9 +43,7 @@ spec:
 
   disruption:
     consolidationPolicy: WhenEmptyOrUnderutilized
-    consolidateAfter: 10m  # 10m > HPA scale-down stabilization (300s) to avoid disrupting draining pods
-
-  weight: 10
+    consolidateAfter: 10m  # longer than HPA scale-down stabilization (5m) to avoid draining nodes HPA may still need
 
 ---
 apiVersion: karpenter.k8s.aws/v1
@@ -57,7 +55,7 @@ spec:
 
   subnetSelectorTerms:
     - tags:
-        kubernetes.io/role/internal-elb: "1"
+        karpenter.sh/discovery: redemption-prod
 
   securityGroupSelectorTerms:
     - tags:

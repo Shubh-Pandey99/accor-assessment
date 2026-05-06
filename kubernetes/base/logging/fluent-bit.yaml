@@ -1,6 +1,4 @@
 ---
-# Fluent Bit ServiceAccount — bound to IRSA role for CloudWatch log delivery.
-# Role ARN annotation injected by production overlay patch.
 apiVersion: v1
 kind: ServiceAccount
 metadata:
@@ -37,6 +35,13 @@ data:
         Merge_Log           On
         Keep_Log            Off
 
+    # Only forward logs from the redemption namespace; other namespaces
+    # (kube-system, karpenter, logging) are captured by the control plane log group.
+    [FILTER]
+        Name    grep
+        Match   kube.*
+        Regex   $kubernetes['namespace_name'] ^redemption$
+
     [OUTPUT]
         Name              cloudwatch_logs
         Match             kube.*
@@ -45,8 +50,6 @@ data:
         log_stream_prefix pod/
         auto_create_group false
   parsers.conf: |
-    # CRI parser for EKS nodes running AL2023 with containerd runtime.
-    # Format: <time> <stream> <flags> <log>
     [PARSER]
         Name        cri
         Format      regex
@@ -84,7 +87,7 @@ spec:
       containers:
         - name: fluent-bit
           image: public.ecr.aws/aws-observability/aws-for-fluent-bit:stable
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           resources:
             requests:

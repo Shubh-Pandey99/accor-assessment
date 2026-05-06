@@ -37,12 +37,12 @@ Architecture diagram: [`diagrams/architecture.svg`](diagrams/architecture.svg) â
 
 ## Design & Architecture
 
-For a deep dive into the architecture, scaling strategy, security controls, and a list of known gaps (like deferred ElastiCache provisioning or the two-step apply for CloudWatch alarms), please refer to the [Design Document](docs/design-document.md).
+The [design document](docs/design-document.md) covers the architecture, scaling approach, security controls, and a running list of known gaps (deferred ElastiCache, two-step apply for CloudWatch alarms, and others).
 
 ## Prerequisites
 
 - AWS CLI v2
-- Terraform >= 1.6
+- Terraform >= 1.9
 - kubectl >= 1.29
 - kustomize >= 5.0
 - docker

@@ -52,7 +52,9 @@ resource "aws_subnet" "private" {
   })
 }
 
-# Database subnets
+# Database subnets — reserved for ElastiCache Multi-AZ deployment.
+# Not currently in use; provisioned now to avoid CIDR conflicts when ElastiCache is added post-launch.
+# Network policy egress to port 6379 is already pre-configured in network-policy.yaml.
 resource "aws_subnet" "database" {
   count = length(var.availability_zones)
 

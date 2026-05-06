@@ -24,7 +24,7 @@ data:
 
     cache:
       type: elasticache
-      # Redis endpoint injected when ElastiCache is provisioned (External Secrets or overlay patch)
+      # endpoint: REPLACE_WHEN_ELASTICACHE_PROVISIONED
       ttl: 300
 
     rateLimit:

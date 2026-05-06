@@ -64,8 +64,3 @@ output "waf_acl_arn" {
   value       = module.security.waf_acl_arn
 }
 
-output "alb_logs_bucket_name" {
-  description = "S3 bucket for ALB access logs (set in Ingress load-balancer-attributes annotation)"
-  value       = module.eks.alb_logs_bucket_name
-}
-

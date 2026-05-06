@@ -54,7 +54,7 @@ spec:
       containers:
         - name: redemption
           image: redemption-service:1.0.0
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
 
           ports:
             - name: http

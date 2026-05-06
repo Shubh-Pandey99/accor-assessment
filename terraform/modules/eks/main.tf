@@ -1,7 +1,6 @@
 # EKS cluster + node groups
 
 data "aws_caller_identity" "current" {}
-data "aws_partition" "current" {}
 
 # KMS for secrets encryption at rest
 resource "aws_kms_key" "eks" {
@@ -40,8 +39,8 @@ resource "aws_iam_role" "cluster" {
 
 resource "aws_iam_role_policy_attachment" "cluster_policies" {
   for_each = toset([
-    "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKSClusterPolicy",
-    "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKSVPCResourceController",
+    "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy",
+    "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController",
   ])
 
   role       = aws_iam_role.cluster.name
@@ -149,10 +148,10 @@ resource "aws_iam_role" "node" {
 
 resource "aws_iam_role_policy_attachment" "node_policies" {
   for_each = toset([
-    "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKSWorkerNodePolicy",
-    "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEKS_CNI_Policy",
-    "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
-    "arn:${data.aws_partition.current.partition}:iam::aws:policy/AmazonSSMManagedInstanceCore",
+    "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
+    "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+    "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+    "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore",
   ])
 
   role       = aws_iam_role.node.name
@@ -235,13 +234,14 @@ resource "aws_iam_role_policy" "karpenter_controller" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "Karpenter"
+        Sid    = "KarpenterEC2"
         Effect = "Allow"
         Action = [
           "ec2:CreateLaunchTemplate",
           "ec2:CreateFleet",
           "ec2:CreateTags",
           "ec2:DescribeLaunchTemplates",
+          "ec2:DescribeLaunchTemplateVersions",
           "ec2:DescribeInstances",
           "ec2:DescribeSecurityGroups",
           "ec2:DescribeSubnets",
@@ -252,7 +252,6 @@ resource "aws_iam_role_policy" "karpenter_controller" {
           "ec2:DescribeSpotPriceHistory",
           "ec2:RunInstances",
           "ec2:DeleteLaunchTemplate",
-          "iam:PassRole",
           "pricing:GetProducts",
           "ssm:GetParameter",
         ]
@@ -267,6 +266,21 @@ resource "aws_iam_role_policy" "karpenter_controller" {
             "ec2:ResourceTag/karpenter.sh/nodepool" = "*"
           }
         }
+        Resource = "*"
+      },
+      {
+        # Required for Karpenter v1 self-managed instance profile flow
+        Sid    = "KarpenterInstanceProfile"
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole",
+          "iam:CreateInstanceProfile",
+          "iam:TagInstanceProfile",
+          "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile",
+          "iam:DeleteInstanceProfile",
+          "iam:GetInstanceProfile",
+        ]
         Resource = "*"
       },
     ]
@@ -307,16 +321,6 @@ resource "aws_eks_addon" "kube_proxy" {
   resolve_conflicts_on_create = "OVERWRITE"
   resolve_conflicts_on_update = "OVERWRITE"
   tags                        = var.tags
-}
-
-resource "aws_eks_addon" "ebs_csi" {
-  cluster_name                = aws_eks_cluster.main.name
-  addon_name                  = "aws-ebs-csi-driver"
-  resolve_conflicts_on_create = "OVERWRITE"
-  resolve_conflicts_on_update = "OVERWRITE"
-  tags                        = var.tags
-
-  depends_on = [aws_eks_node_group.baseline]
 }
 
 
