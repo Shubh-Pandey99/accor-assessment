@@ -61,11 +61,11 @@ We strictly avoid using broad node-level instance profiles. If a container is ev
 - A `preStop: sleep 15s` lifecycle hook gives the ALB 15 seconds to safely drain existing connections before the pod terminates.
 - We use three distinct probes: startup (generous, allowing for slow cold starts), readiness (to gate traffic), and liveness (strictly to restart genuinely hung pods). Collapsing these into a single probe is a common anti-pattern that can cause cascading restarts under heavy load.
 
-**Application data stores:**
-- *DynamoDB* (`redemption-transactions`, PAY_PER_REQUEST billing, PITR enabled) — primary transaction store.
-- *SQS* (`redemption-events`, 24h retention, 60s visibility timeout, KMS encrypted) — async event processing.
-- *Secrets Manager* (`redemption/app-config`) — API keys and feature flags, auto-rotation enabled.
-- *ECR* (`redemption-service`, image scan on push, KMS encrypted) — container image registry.
+**Application data stores (IRSA policies and network egress pre-configured; table/queue provisioning is deferred to the application team):**
+- *DynamoDB* (`redemption-transactions`) — primary transaction store. Recommended: PAY_PER_REQUEST billing with PITR enabled.
+- *SQS* (`redemption-events`) — async event processing. Recommended: 24h retention, 60s visibility timeout, KMS encryption.
+- *Secrets Manager* (`redemption/app-config`, provisioned by Terraform) — API keys and feature flags, auto-rotation enabled.
+- *ECR* (`redemption-service`, provisioned by Terraform) — container image registry, immutable tags, scan on push, KMS encrypted.
 
 **Monitoring:**
 - Structured JSON logs shipped to CloudWatch Logs (90-day retention) via Fluent Bit. Fluent Bit runs as a DaemonSet in the `logging` namespace, deployed as part of the standard Kustomize overlay (`kubernetes/base/logging/`). Its IRSA role is provisioned by Terraform.
