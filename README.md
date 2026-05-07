@@ -37,7 +37,7 @@ Architecture diagram: [`diagrams/architecture.svg`](diagrams/architecture.svg) â
 
 ## Design & Architecture
 
-The [design document](docs/design-document.md) ([PDF](docs/design-document.pdf)) covers the architecture, scaling approach, security controls, and a running list of known gaps (deferred ElastiCache, two-step apply for CloudWatch alarms, and others).
+The [design document](docs/design-document.pdf) covers the architecture, scaling approach, security controls, and a running list of known gaps (deferred ElastiCache, two-step apply for CloudWatch alarms, and others).
 
 ## Prerequisites
 
