@@ -37,7 +37,7 @@ Architecture diagram: [`diagrams/architecture.svg`](diagrams/architecture.svg) â
 
 ## Design & Architecture
 
-The [design document](docs/design-document.md) covers the architecture, scaling approach, security controls, and a running list of known gaps (deferred ElastiCache, two-step apply for CloudWatch alarms, and others).
+The [design document](docs/design-document.md) ([PDF](docs/design-document.pdf)) covers the architecture, scaling approach, security controls, and a running list of known gaps (deferred ElastiCache, two-step apply for CloudWatch alarms, and others).
 
 ## Prerequisites
 
@@ -47,20 +47,28 @@ The [design document](docs/design-document.md) covers the architecture, scaling 
 - kustomize >= 5.0
 - docker
 
-## Getting started
+## Getting Started
+
+### 1. Provision Infrastructure
 
 ```bash
-# 1. Provision infrastructure
 cd terraform
 terraform init
 terraform plan
 terraform apply
+```
 
-# 2. Configure kubectl
+### 2. Configure kubectl
+
+```bash
 aws eks update-kubeconfig --region ap-southeast-1 --name redemption-prod
+```
 
-# 3. Bootstrap: AWS Load Balancer Controller (required for ALB Ingress)
-#    IRSA role is provisioned by Terraform. Run once after first terraform apply.
+### 3. Bootstrap the AWS Load Balancer Controller
+
+IRSA role is provisioned by Terraform. Run once after the first `terraform apply`.
+
+```bash
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
@@ -69,17 +77,25 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.create=true \
   --set serviceAccount.name=aws-load-balancer-controller \
   --set "serviceAccount.annotations.eks\.amazonaws\.com/role-arn=$(terraform output -raw alb_controller_role_arn)"
+```
 
-# 4. Bootstrap: Karpenter (required for burst node autoscaling)
-#    See docs/design-document.md for full Karpenter bootstrap steps.
+### 4. Bootstrap Karpenter
 
-# 5. Inject account-specific ARNs and deploy all manifests
-#    The production overlay patches IRSA ARNs and the SQS queue URL automatically.
-#    Replace ACCOUNT_ID / CERT_ID / WAF_ID placeholders first (or let CI/CD do it).
+Required for burst node autoscaling during flash sales. See [design document](docs/design-document.md) for full Karpenter bootstrap steps.
+
+### 5. Deploy Kubernetes Manifests
+
+Replace `ACCOUNT_ID` / `CERT_ID` / `WAF_ID` placeholders first, or let CI/CD handle substitution.
+
+```bash
 kustomize build kubernetes/overlays/production | kubectl apply -f -
+```
 
-# 6. Enable CloudWatch alarms (after ALB is live)
-#    Set alb_deployed = true in terraform.tfvars, then:
+### 6. Enable CloudWatch Alarms
+
+The ALB is provisioned by the Load Balancer Controller, not Terraform. Once the ALB is live, set `alb_deployed = true` in `terraform.tfvars` and re-apply:
+
+```bash
 terraform apply
 ```
 
